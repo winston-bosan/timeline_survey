@@ -92,7 +92,7 @@ details.i[open]{display:block}
 /* points */
 #pointRows{display:flex;flex-direction:column;gap:6px}
 .pt{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.pt input.p{width:64px}.pt input.y{width:90px}
+.pt input.p{width:64px}.pt input.y{width:104px}
 .note{font-size:14px;color:var(--muted)}
 .note:empty{display:none}
 .note.err{color:var(--warn)}
@@ -102,10 +102,23 @@ details.i[open]{display:block}
 .read div{background:var(--bg);display:flex;flex-direction:column}
 .read .k{background:var(--head);font-weight:bold;font-size:14px;padding:3px 8px;border-bottom:1px solid var(--line)}
 .read .v{padding:4px 8px;font-variant-numeric:tabular-nums}
+#readout{grid-template-columns:repeat(4,minmax(0,1fr))}
 
 /* form */
 .form{display:flex;gap:8px 14px;align-items:end;flex-wrap:wrap}
 .form label{display:flex;flex-direction:column;gap:2px;font-size:14px}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);padding:8px 18px;font-size:17px;font-weight:bold;cursor:pointer}
+.btn.primary:disabled{background:var(--head);color:var(--muted);border-color:var(--line);cursor:default}
+
+/* forecast view: the numbered steps at the left, the chart at the right; one column on a narrow screen */
+.edit{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:14px 28px;align-items:start}
+@media (max-width:900px){.edit{grid-template-columns:minmax(0,1fr)}}
+.edit>.card:first-child{gap:14px}
+.step{display:flex;flex-direction:column;gap:8px}
+.step+.step{border-top:1px solid var(--line);padding-top:12px}
+.step h2{font-size:20px;margin:0}
+.step.done h2::after{content:" ✓"}
+.step .row{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap}
 
 /* results */
 .legend{display:flex;gap:4px 16px;flex-wrap:wrap;font-size:14px}
@@ -122,7 +135,8 @@ details.i[open]{display:block}
 @keyframes inL{from{opacity:0;transform:translateX(-28px)}}
 @media (prefers-reduced-motion:reduce){#cCard{animation:none!important}}
 #cCard ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:4px}
-#cCard .btn.link{text-align:left;vertical-align:top}
+.btn.link{text-align:left}
+#cCard .btn.link{vertical-align:top}
 #cCard .read .v{white-space:pre-line}
 .cnav{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 /* probability bar: click or drag anywhere on it */
@@ -180,38 +194,50 @@ td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
   </section>
 
   <section id="viewF">
-    <div class="card">
-      <div class="bar">
-        <div class="left"><span class="modeLabel" id="modeLabel"></span><button class="btn link" id="switchMode" type="button">change</button><details class="i" id="eInfo"><summary aria-label="How this works">ⓘ</summary><div id="eInfoT"></div></details></div>
-        <div class="right">
-          <div class="seg" id="eView" role="group" aria-label="Curve type"><button type="button" data-v="cdf">Cumulative</button><button type="button" data-v="pdf">Density</button></div>
-          <span>Show until</span>
-          <div class="seg" id="eHor" role="group" aria-label="Chart horizon"><button type="button" data-v="2040">2040</button><button type="button" data-v="2060">2060</button><button type="button" data-v="2100">2100</button></div>
+    <div class="edit">
+      <div class="card">
+        <div class="step" id="st1">
+          <h2>1. Enter your forecast</h2>
+          <p id="st1Hint"></p>
+          <div class="row"><span>Input: <span class="modeLabel" id="modeLabel"></span></span><button class="btn link" id="switchMode" type="button">change</button><details class="i" id="eInfo"><summary aria-label="How this works">ⓘ</summary><div id="eInfoT"></div></details></div>
+          <div id="distPanel" hidden>
+            <button class="btn" id="addComp" type="button">+ Add component</button>
+          </div>
+          <div id="pointsPanel" hidden style="display:flex;flex-direction:column;gap:10px">
+            <div id="pointRows"></div>
+            <div><button class="btn" id="addPoint" type="button">+ Add point</button></div>
+          </div>
+          <p class="note" id="fitNote"></p>
+        </div>
+        <div class="step" id="st2">
+          <h2>2. Submit</h2>
+          <form class="form" id="form">
+            <label>Name<input type="text" id="fName" maxlength="80" required autocomplete="name"></label>
+            <label>Organization (optional)<input type="text" id="fOrg" maxlength="80" list="orgList" autocomplete="organization"><datalist id="orgList"></datalist></label>
+            <label>Years of relevant experience<input type="number" id="fYears" min="0" max="70" step="1" value="0"></label>
+            <input type="text" id="fSite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px"><button class="btn primary" id="submitBtn" type="submit">Submit forecast</button>
+          </form>
+          <p class="note" id="subWhy"></p>
+          <p class="note" id="nameHint" hidden></p>
+          <p class="note" id="status">Visible to everyone who can open this page.</p>
+        </div>
+        <div class="step">
+          <h2>3. Compare</h2>
+          <p><a href="#results">Everyone's forecasts</a> shows the pooled forecast with your curve on it.</p>
         </div>
       </div>
-      <div class="chart" id="eChart"><div class="plot"></div><div class="guide"></div><div class="tip"></div></div>
-      <div id="sliders"></div>
-      <div id="distPanel" hidden>
-        <button class="btn" id="addComp" type="button">+ Add component</button>
+      <div class="card">
+        <div class="bar">
+          <div class="right">
+            <div class="seg" id="eView" role="group" aria-label="Curve type"><button type="button" data-v="cdf">Cumulative</button><button type="button" data-v="pdf">Density</button></div>
+            <span>Show until</span>
+            <div class="seg" id="eHor" role="group" aria-label="Chart horizon"><button type="button" data-v="2040">2040</button><button type="button" data-v="2060">2060</button><button type="button" data-v="2100">2100</button></div>
+          </div>
+        </div>
+        <div class="chart" id="eChart"><div class="plot"></div><div class="guide"></div><div class="tip"></div></div>
+        <div id="sliders"></div>
+        <div class="read" id="readout"></div>
       </div>
-      <div id="pointsPanel" hidden style="display:flex;flex-direction:column;gap:10px">
-        <div id="pointRows"></div>
-        <div><button class="btn" id="addPoint" type="button">+ Add point</button></div>
-      </div>
-      <p class="note" id="fitNote"></p>
-      <div class="read" id="readout"></div>
-    </div>
-
-    <div class="card">
-      <h2>Submit your forecast</h2>
-      <form class="form" id="form">
-        <label>Name<input type="text" id="fName" maxlength="80" required autocomplete="name"></label>
-        <label>Organization (optional)<input type="text" id="fOrg" maxlength="80" list="orgList" autocomplete="organization"><datalist id="orgList"></datalist></label>
-        <label>Years of relevant experience<input type="number" id="fYears" min="0" max="70" step="1" value="0"></label>
-        <input type="text" id="fSite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px"><button class="btn primary" id="submitBtn" type="submit">Submit forecast</button>
-      </form>
-      <p class="note" id="nameHint" hidden></p>
-      <p class="note" id="status">Visible to everyone who can open this page.</p>
     </div>
   </section>
 
@@ -408,7 +434,7 @@ function renderEditor(){
 function syncPointInputs(){document.querySelectorAll('#pointRows .pt').forEach((r,i)=>{const q=S.points[i];if(!q)return;const p=r.querySelector('.p'),y=r.querySelector('.y');if(document.activeElement!==p)p.value=q.p??'';if(document.activeElement!==y)y.value=q.year??''})}
 function buildPoints(){const host=$('pointRows');host.textContent='';
   S.points.forEach((q,i)=>{const r=document.createElement('div');r.className='pt';
-    r.innerHTML=`<input class="p" id="pp${i}" type="number" min="1" max="99" step="1" aria-label="Probability in percent"><span class="t">% chance of TAI before</span><input class="y" id="py${i}" type="number" min="${GY0}" max="2500" step="any" placeholder="Year" aria-label="Year"><button class="x" type="button" aria-label="Remove point" ${S.points.length<=2?'hidden':''}>×</button>`;
+    r.innerHTML=`<input class="p" id="pp${i}" type="number" min="1" max="99" step="1" aria-label="Probability in percent"><span class="t">% chance of TAI before</span><input class="y" id="py${i}" type="number" min="${GY0}" max="2500" step="any" placeholder="e.g. ${Y0+4+i*10}" aria-label="Year"><button class="x" type="button" aria-label="Remove point" ${S.points.length<=2?'hidden':''}>×</button>`;
     const p=r.querySelector('.p'),y=r.querySelector('.y');p.value=q.p??'';y.value=q.year??'';
     p.addEventListener('input',()=>{q.p=p.value===''?null:+p.value;renderEditor();persist()});
     y.addEventListener('input',()=>{q.year=y.value===''?null:+y.value;renderEditor();persist()});
@@ -450,11 +476,13 @@ function setMode(mode){
   if(mode==='points'&&prev==='dist'&&S.distTouched&&m&&m.ok&&validPoints().length<2){let last=Y0;S.points=[10,50,90].map(p=>{let y=Math.max(last+1,Math.round(quantileOf(m.cdf,p/100)));y=Math.min(y,2500);last=y;return {p,year:y}})}
   S.mode=mode;S.view=mode==='dist'?'pdf':'cdf';
   $('modeLabel').textContent=mode==='dist'?'Sliders':'Points';
+  $('st1Hint').textContent=mode==='dist'?'Drag the handles under the chart. The circles are the 25% and 75% quartiles; the square is the median.':'Type a probability and a year in each row. Two rows are enough. The chart shows your curve as you type, and you can drag the points on it.';
   $('pointsPanel').hidden=mode!=='points';$('pointsPanel').style.display=mode==='points'?'flex':'none';$('distPanel').hidden=mode!=='dist';
   setSeg($('eView'),S.view);setSeg($('eHor'),S.horizon);buildPoints();buildSliders();renderEditor();persist();
 }
 function openModal(){$('modal').hidden=false;$('modal').querySelector('.choice').focus()}
-function closeModal(mode){$('modal').hidden=true;setMode(mode||S.mode||'points')}
+function closeModal(mode){$('modal').hidden=true;setMode(mode||S.mode||'points');
+  const y=[...document.querySelectorAll('#pointRows .y')].find(i=>!i.value);if(S.mode==='points'&&y)y.focus()} // the cursor goes where a new user starts
 document.querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.mode)));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('modal').hidden)closeModal()});
 $('switchMode').addEventListener('click',openModal);
@@ -502,8 +530,8 @@ function renderResults(){
   if(rows.length){
     const groups={};rows.forEach(r=>{if(!r.org)return;const k=r.org.toLowerCase();(groups[k]=groups[k]||{name:r.org,rows:[]}).rows.push(r)});
     orgs=Object.entries(groups).map(([k,g])=>({k,name:g.name,rows:g.rows})).sort((a,b)=>b.rows.length-a.rows.length||a.name.localeCompare(b.name));
-    // The four largest organizations are drawn unless the viewer ticks or unticks them in the Organizations list.
-    orgs.forEach((g,i)=>{g.on=R.orgShow[g.k]??i<4});
+    // An organization is drawn only when the viewer ticks it in the Organizations list.
+    orgs.forEach(g=>{g.on=!!R.orgShow[g.k]});
     orgs.filter(g=>g.on).forEach((g,i)=>{const col=`var(--o${i%4+1})`,nm=g.name+' (n='+g.rows.length+')';g.avg=average(g.rows,R.avg);series.push({pts:gridPts(g.avg,R.view),color:col,width:1.75,name:nm});addLeg(nm,col,'thin')});
     rows.forEach(r=>{if(R.overlay[r.id]){series.push({pts:gridPts(average([r],'arith'),R.view),color:'var(--muted)',width:1.25,name:r.name});}});
     if(Object.keys(R.overlay).some(k=>R.overlay[k]))addLeg('Selected individuals','var(--muted)','thin');
@@ -519,7 +547,7 @@ function renderResults(){
     empty:series.length?'':(R.loaded?'No forecasts yet':R.msg||'Loading forecasts…'),
     snap:x=>R.view==='cdf'?Math.max(GY0,Math.round(x)):Math.max(GY0,Math.floor(x))+.5,head:x=>R.view==='cdf'?'before '+x:'during '+Math.floor(x),vfmt:pct});
   $('rNote').textContent=rows.length?'':(R.loaded?'':R.msg||'');
-  $('rInfoT').textContent=(R.avg==='geo'?'The black line pools every individual forecast with the geometric mean of odds.':'The black line is the arithmetic mean of every individual forecast.')+' Thin lines are organizations, averaged the same way; the four largest show by default. Change which ones under Organizations. One forecast per name: the latest.'+(nOld?' '+nOld+' forecasts were made under the earlier 99% definition.':'');
+  $('rInfoT').textContent=(R.avg==='geo'?'The black line pools every individual forecast with the geometric mean of odds.':'The black line is the arithmetic mean of every individual forecast.')+' The dashed line is your own forecast. To add a line for an organization, tick it under Organizations; it is averaged the same way. One forecast per name: the latest.'+(nOld?' '+nOld+' forecasts were made under the earlier 99% definition.':'');
   const t=$('rTiles');t.textContent='';
   const cell=(k,v,cls)=>{const d=document.createElement('div');if(cls)d.className=cls;const a=document.createElement('span'),b=document.createElement('span');a.className='k';b.className='v';a.textContent=k;b.textContent=v;d.appendChild(a);d.appendChild(b);t.appendChild(d)};
   cell('Forecasters',R.loaded?String(rows.length):'–');cell('Aggregate median',agg?gridQuantile(agg,.5):'–','med');
@@ -553,8 +581,9 @@ function loadForecast(d){
 
 /* ---------- submit ---------- */
 let busy=false;
-function updateSubmit(){const b=$('submitBtn');b.textContent=busy?'Saving…':S.saved?'Update my forecast':'Submit forecast';
-  b.disabled=busy||!apiSet||!(lastModel&&lastModel.ok)||(S.mode==='dist'&&!S.distTouched)}
+function updateSubmit(){const b=$('submitBtn'),ready=!!(lastModel&&lastModel.ok)&&!(S.mode==='dist'&&!S.distTouched);b.textContent=busy?'Saving…':S.saved?'Update my forecast':'Submit forecast';
+  b.disabled=busy||!apiSet||!ready;$('st1').classList.toggle('done',ready);$('st2').classList.toggle('done',S.saved);
+  $('subWhy').textContent=ready?'':'Submit turns on when step 1 is complete: '+(S.mode==='dist'?'move a handle.':'enter two points.')}
 function say(t,err){const s=$('status');s.textContent=t;s.className='note'+(err?' err':'')}
 $('form').addEventListener('submit',async e=>{e.preventDefault();if(busy||!apiSet||!lastModel||!lastModel.ok)return;
   const name=$('fName').value.trim();if(!name){say('Add your name.',true);$('fName').focus();return}
@@ -566,7 +595,7 @@ $('form').addEventListener('submit',async e=>{e.preventDefault();if(busy||!apiSe
   try{ // text/plain keeps this a "simple" request, which Apps Script needs (it cannot answer a CORS preflight)
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(row)}),j=await res.json();
     if(!j.ok)throw new Error(j.error||'refused');
-    S.saved=true;say('Saved.');persist();const r=cleanRow('n'+R.rows.length,rowDoc(row));if(r){R.rows.push(r);renderResults()}nameHint()}
+    S.saved=true;say('Saved. ');const a=el('a',null,"Compare with everyone's forecasts");a.href='#results';$('status').appendChild(a);persist();const r=cleanRow('n'+R.rows.length,rowDoc(row));if(r){R.rows.push(r);renderResults()}nameHint()}
   catch(err){say('Could not save: '+(err&&err.message==='Failed to fetch'?'no connection to the sheet':String(err&&err.message||'unknown error'))+'. Try again.',true)}
   busy=false;updateSubmit()});
 $('fName').addEventListener('input',nameHint);
