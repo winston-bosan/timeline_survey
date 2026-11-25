@@ -7,7 +7,7 @@
 <style>
 /* Plain-HTML look: default sans, blue underlined links, bordered tables, no cards. The chart is the only designed thing. */
 :root{
-  --bg:#ffffff; --surface:#ffffff; --ink:#000000; --muted:#666666; --line:#aaaaaa; --head:#eeeeee;
+  --bg:#ffffff; --surface:#ffffff; --ink:#000000; --muted:#666666; --line:#aaaaaa; --head:#eeeeee; --box:#f4f4f4; --boxhead:#dcdcdc;
   --link:#0645ad; --accent:#1f5fd0; --accent-ink:#ffffff;
   --o1:#c4571b; --o2:#8b3fb0; --o3:#2e8b57; --o4:#8f7210; --warn:#b3261e;
   --f-body:Helvetica,Arial,sans-serif;
@@ -15,14 +15,14 @@
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#111111; --surface:#111111; --ink:#e8e8e8; --muted:#999999; --line:#555555; --head:#222222;
+    --bg:#111111; --surface:#111111; --ink:#e8e8e8; --muted:#999999; --line:#555555; --head:#222222; --box:#1c1c1c; --boxhead:#303030;
     --link:#8ab4f8; --accent:#8ab4f8; --accent-ink:#111111;
     --o1:#f0935a; --o2:#c98be6; --o3:#6fcf97; --o4:#d9b84a; --warn:#ff8a80;
     color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#111111; --surface:#111111; --ink:#e8e8e8; --muted:#999999; --line:#555555; --head:#222222;
+  --bg:#111111; --surface:#111111; --ink:#e8e8e8; --muted:#999999; --line:#555555; --head:#222222; --box:#1c1c1c; --boxhead:#303030;
   --link:#8ab4f8; --accent:#8ab4f8; --accent-ink:#111111;
   --o1:#f0935a; --o2:#c98be6; --o3:#6fcf97; --o4:#d9b84a; --warn:#ff8a80;
   color-scheme:dark;
@@ -103,6 +103,9 @@ details.i[open]{display:block}
 .read .k{background:var(--head);font-weight:bold;font-size:14px;padding:3px 8px;border-bottom:1px solid var(--line)}
 .read .v{padding:4px 8px;font-variant-numeric:tabular-nums}
 #readout{grid-template-columns:repeat(4,minmax(0,1fr))}
+.read[hidden]{display:none}
+.read.meta{grid-template-columns:minmax(0,1fr);max-width:80ch}
+.read.meta div{background:var(--box)}.read.meta .k{background:var(--boxhead)}
 
 /* form */
 .form{display:flex;gap:8px 14px;align-items:end;flex-wrap:wrap}
@@ -119,6 +122,12 @@ details.i[open]{display:block}
 .step h2{font-size:20px;margin:0}
 .step.done h2::after{content:" ✓"}
 .step .row{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap}
+/* walkthrough: a callout at the part it explains, and an outline around that part */
+.hrow{display:flex;gap:2px 14px;align-items:baseline;flex-wrap:wrap}
+.btn.link.help{color:var(--muted);font-size:13px}
+.tour{border:1px solid var(--ink);background:var(--box);padding:8px 10px;font-size:15px;max-width:60ch}
+.tour .btn{margin-left:6px}
+.tourOn{outline:2px solid var(--accent);outline-offset:6px}
 
 /* results */
 .legend{display:flex;gap:4px 16px;flex-wrap:wrap;font-size:14px}
@@ -175,8 +184,11 @@ td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
 <div class="wrap">
   <nav class="tabs" aria-label="Views"><a href="#forecast" id="tabF">Your forecast</a><a href="#china" id="tabC">China questions</a><a href="#results" id="tabR">Everyone's forecasts <span class="n" id="nCount"></span></a></nav>
   <header class="top">
-    <h1 id="pageH">When will transformative AI arrive?</h1>
-    <p class="def" id="pageDef">TAI = AI capable of performing 98% of current (2026) remote jobs.</p>
+    <div class="hrow"><h1 id="pageH">When will transformative AI arrive?</h1><button class="btn link help" id="tourBtn" type="button">Show the walkthrough</button></div>
+    <div class="read meta" id="pageDef">
+      <div><span class="k">Definition</span><span class="v">TAI = AI capable of performing 98% of current (2026) remote jobs.</span></div>
+      <div><span class="k">Fine print</span><span class="v">The AI must be capable of doing these jobs; it does not need to be diffused through the economy. The 98% counts the remote jobs that exist in 2026, not kinds of remote job that are invented later.</span></div>
+    </div>
   </header>
 
   <section id="viewC" hidden>
@@ -221,7 +233,7 @@ td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
           <p class="note" id="nameHint" hidden></p>
           <p class="note" id="status">Visible to everyone who can open this page.</p>
         </div>
-        <div class="step">
+        <div class="step" id="st3">
           <h2>3. Compare</h2>
           <p><a href="#results">Everyone's forecasts</a> shows the pooled forecast with your curve on it.</p>
         </div>
@@ -482,7 +494,8 @@ function setMode(mode){
 }
 function openModal(){$('modal').hidden=false;$('modal').querySelector('.choice').focus()}
 function closeModal(mode){$('modal').hidden=true;setMode(mode||S.mode||'points');
-  const y=[...document.querySelectorAll('#pointRows .y')].find(i=>!i.value);if(S.mode==='points'&&y)y.focus()} // the cursor goes where a new user starts
+  const y=[...document.querySelectorAll('#pointRows .y')].find(i=>!i.value);if(S.mode==='points'&&y)y.focus(); // the cursor goes where a new user starts
+  let seen=true;try{seen=!!localStorage.getItem('tai-tour')}catch(e){}if(!seen)tour(0)}
 document.querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.mode)));
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('modal').hidden)closeModal()});
 $('switchMode').addEventListener('click',openModal);
@@ -735,10 +748,27 @@ async function bootC(){
   if(apiSet)try{const j=await (await fetch(API+'?tab=answers')).json();C.ok=!!(j.ok&&j.tab==='answers'&&Array.isArray(j.rows));if(C.ok)C.rows=j.rows}catch(e){}
   C.loaded=true;if(!$('viewC').hidden){const a=document.activeElement;if(!(a instanceof Element&&a.closest('#cCard')))renderC();else updateSubmitC()}else if(!$('viewR').hidden)renderResults()}
 
+/* ---------- walkthrough ---------- */
+// Runs one time for a new user, after the choice of input mode. The small button next to the question runs it again.
+const TOUR=[
+  ['st1',()=>'Start here. '+(S.mode==='dist'?'Drag the handles under the chart to set the quartiles of your forecast.':'In each row, type the year before which you give TAI that chance. You can change the percentages and add rows.')+' Select "change" for a different type of input.'],
+  ['eChart',()=>'This is your curve. It changes as you '+(S.mode==='dist'?'move the handles.':'type. You can also drag the points on it.')+' The table below it shows the years and probabilities that follow from your curve.'],
+  ['st2',()=>'Add your name, then select "Submit forecast". You can submit again later: the latest forecast under your name counts.'],
+  ['st3',()=>'After you submit, compare your curve with the pooled forecast of all forecasters.'],
+];
+function tourOff(){document.querySelectorAll('.tour').forEach(e=>e.remove());document.querySelectorAll('.tourOn').forEach(e=>e.classList.remove('tourOn'))}
+function tour(i){tourOff();
+  if(i==null||i>=TOUR.length){try{localStorage.setItem('tai-tour','1')}catch(e){}return}
+  const [id,text]=TOUR[i],t=$(id),last=i===TOUR.length-1,b=el('div','tour'),nx=el('button','btn',last?'Done':'Next'),sk=el('button','btn link','Skip');
+  nx.type=sk.type='button';nx.addEventListener('click',()=>tour(i+1));sk.addEventListener('click',()=>tour(null));
+  b.append(el('b',null,'Step '+(i+1)+' of '+TOUR.length+'. '),text(),nx);if(!last)b.append(sk);
+  t.classList.add('tourOn');t.classList.contains('step')?t.prepend(b):t.before(b);if(i)b.scrollIntoView({block:'nearest'})}
+$('tourBtn').addEventListener('click',()=>{if(!$('modal').hidden)closeModal();tour(0)});
+
 /* ---------- routing + start ---------- */
 function route(){const v=location.hash==='#results'?'R':location.hash==='#china'?'C':'F';
   ['F','C','R'].forEach(k=>{$('view'+k).hidden=k!==v;k===v?$('tab'+k).setAttribute('aria-current','page'):$('tab'+k).removeAttribute('aria-current')});
-  $('pageH').textContent=v==='C'?'China and AI: what do you expect?':'When will transformative AI arrive?';$('pageDef').hidden=v==='C';
+  $('pageH').textContent=v==='C'?'China and AI: what do you expect?':'When will transformative AI arrive?';$('pageDef').hidden=v==='C';$('tourBtn').hidden=v!=='F';if(v!=='F')tourOff();
   v==='R'?renderResults():v==='C'?renderC():renderEditor()}
 window.addEventListener('hashchange',route);
 // The questionnaire lays itself out in percent, so it does not need a redraw on resize (a redraw would also drop the focus when a phone keyboard opens).
