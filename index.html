@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TAI Timeline Forecast</title>
+<style>
+/* Plain-HTML look: default sans, blue underlined links, bordered tables, no cards. The chart is the only designed thing. */
+:root{
+  --bg:#ffffff; --surface:#ffffff; --ink:#000000; --muted:#666666; --line:#aaaaaa; --head:#eeeeee;
+  --link:#0645ad; --accent:#1f5fd0; --accent-ink:#ffffff;
+  --o1:#c4571b; --o2:#8b3fb0; --o3:#2e8b57; --o4:#8f7210; --warn:#b3261e;
+  --f-body:Helvetica,Arial,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#111111; --surface:#111111; --ink:#e8e8e8; --muted:#999999; --line:#555555; --head:#222222;
+    --link:#8ab4f8; --accent:#8ab4f8; --accent-ink:#111111;
+    --o1:#f0935a; --o2:#c98be6; --o3:#6fcf97; --o4:#d9b84a; --warn:#ff8a80;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111111; --surface:#111111; --ink:#e8e8e8; --muted:#999999; --line:#555555; --head:#222222;
+  --link:#8ab4f8; --accent:#8ab4f8; --accent-ink:#111111;
+  --o1:#f0935a; --o2:#c98be6; --o3:#6fcf97; --o4:#d9b84a; --warn:#ff8a80;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.3}
+.wrap{max-width:1100px;padding:8px 16px 48px;display:flex;flex-direction:column;gap:14px}
+h1{font-size:32px;margin:6px 0 0;text-wrap:balance}
+h2{font-size:24px;margin:8px 0 0;text-wrap:balance}
+p{margin:0}
+a,.btn.link,.seg button,.go{color:var(--link);text-decoration:underline}
+.top{display:flex;flex-direction:column;gap:8px}
+.def{max-width:80ch}
+.tabs a:not(:last-child)::after,.seg button:not(:last-child)::after{content:",";color:var(--ink);display:inline-block;margin-right:.3em}
+.tabs a[aria-current="page"],.seg button[aria-pressed="true"]{color:var(--ink);font-weight:bold;text-decoration:none;cursor:default}
+section[hidden]{display:none}
+section{display:flex;flex-direction:column;gap:14px}
+.card{display:flex;flex-direction:column;gap:10px;min-width:0}
+.bar{display:flex;gap:6px 18px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.bar .left,.bar .right{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap}
+.modeLabel{font-weight:bold}
+.seg{display:inline}
+.seg button,.btn.link{background:none;border:0;padding:0;font:inherit;cursor:pointer}
+#oldWrap:not([hidden]){display:flex;gap:6px;align-items:center}
+button,input{font-family:inherit;font-size:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input[type=number]{font-variant-numeric:tabular-nums}
+
+/* (i) */
+details.i{display:inline-block;color:var(--muted);font-size:14px;max-width:80ch}
+details.i summary{list-style:none;cursor:pointer;display:inline-block;width:1.4em;text-align:center}
+details.i summary::-webkit-details-marker{display:none}
+details.i[open]{display:block}
+
+/* chart */
+.chart{position:relative;min-width:0;max-width:1000px}
+.chart svg{display:block;max-width:100%}
+.chart .grid{stroke:var(--line);stroke-width:1;opacity:.45}
+.chart .axis{stroke:var(--ink);stroke-width:1}
+.chart .tick,.chart .axl{fill:var(--muted);font:12px var(--f-body)}
+.chart .today{stroke:var(--muted);stroke-dasharray:2 3}
+.chart .emptyT{fill:var(--muted);font:15px var(--f-body)}
+.chart .dot{fill:var(--bg);stroke:var(--accent);stroke-width:2.5;cursor:grab;touch-action:none}
+.chart .dotHit{fill:transparent;cursor:grab;touch-action:none}
+.guide{position:absolute;top:0;width:1px;background:var(--muted);pointer-events:none;display:none}
+.tip{position:absolute;top:8px;pointer-events:none;display:none;background:var(--bg);color:var(--ink);border:1px solid var(--ink);padding:5px 8px;font-size:13px;max-width:280px;z-index:3}
+.tip .h{color:var(--muted)}
+.tip .r{display:flex;gap:10px;justify-content:space-between;align-items:center}
+.tip .r span:first-child{display:flex;gap:6px;align-items:center;overflow-wrap:anywhere}
+.tip .r b{font-variant-numeric:tabular-nums}
+.sw{display:inline-block;width:10px;height:10px;flex:none}
+
+/* sliders */
+#sliders{display:flex;flex-direction:column;gap:4px;max-width:1000px}
+.comp{display:flex;flex-direction:column;gap:2px}
+.track{position:relative;height:30px;touch-action:none}
+.track::before{content:"";position:absolute;left:0;right:0;top:14px;height:1px;background:var(--line)}
+.track .range{position:absolute;top:13px;height:3px;background:var(--accent)}
+.handle{position:absolute;top:5px;width:20px;height:20px;margin-left:-10px;border:2px solid var(--accent);background:var(--bg);border-radius:50%;cursor:grab;padding:0;touch-action:none}
+.handle.mid{border-radius:0;background:var(--accent)}
+.compMeta{display:flex;gap:4px 16px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.compMeta .q{color:var(--ink);font-variant-numeric:tabular-nums}
+.compMeta input[type=range]{width:130px;vertical-align:middle}
+.x{border:0;background:none;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:0 6px}
+
+/* points */
+#pointRows{display:flex;flex-direction:column;gap:6px}
+.pt{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.pt input.p{width:64px}.pt input.y{width:90px}
+.note{font-size:14px;color:var(--muted)}
+.note:empty{display:none}
+.note.err{color:var(--warn)}
+
+/* readout: looks like a one-row table */
+.read{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);max-width:1000px}
+.read div{background:var(--bg);display:flex;flex-direction:column}
+.read .k{background:var(--head);font-weight:bold;font-size:14px;padding:3px 8px;border-bottom:1px solid var(--line)}
+.read .v{padding:4px 8px;font-variant-numeric:tabular-nums}
+
+/* form */
+.form{display:flex;gap:8px 14px;align-items:end;flex-wrap:wrap}
+.form label{display:flex;flex-direction:column;gap:2px;font-size:14px}
+
+/* results */
+.legend{display:flex;gap:4px 16px;flex-wrap:wrap;font-size:14px}
+.legend span{display:inline-flex;gap:6px;align-items:center;overflow-wrap:anywhere}
+.legend .ln{width:18px;height:0;border-top:3px solid;flex:none}
+.legend .ln.thin{border-top-width:2px}.legend .ln.dash{border-top-style:dashed}
+#indiv summary{cursor:pointer;color:var(--link);text-decoration:underline}
+.tblw{overflow-x:auto;margin-top:8px}
+table{border-collapse:collapse;font-size:15px}
+th,td{text-align:left;padding:4px 10px;border:1px solid var(--line);white-space:nowrap}
+th{background:var(--head)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
+
+/* modal: still big, still plain */
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20;overflow:auto}
+#modal[hidden]{display:none}
+.dlg{background:var(--bg);max-width:860px;width:100%;padding:clamp(16px,3vw,28px);display:flex;flex-direction:column;gap:16px;border:1px solid var(--ink);margin:auto}
+.dlg h2{font-size:clamp(24px,3.6vw,32px);margin:0}
+.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
+.choice{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:8px;color:var(--ink)}
+.choice:hover,.choice:focus-visible{border-color:var(--ink);outline:1px solid var(--ink)}
+.choice .q{font-weight:bold;font-size:20px;text-wrap:balance}
+.choice .go{margin-top:auto}
+.choice svg{width:100%;height:auto;border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="tabs" aria-label="Views"><a href="#forecast" id="tabF">Your forecast</a><a href="#results" id="tabR">Everyone's forecasts <span class="n" id="nCount"></span></a></nav>
+  <header class="top">
+    <h1>When will transformative AI arrive?</h1>
+    <p class="def">TAI = AI capable of performing 98% of current (2026) remote jobs.</p>
+  </header>
+
+  <section id="viewF">
+    <div class="card">
+      <div class="bar">
+        <div class="left"><span class="modeLabel" id="modeLabel"></span><button class="btn link" id="switchMode" type="button">change</button><details class="i" id="eInfo"><summary aria-label="How this works">ⓘ</summary><div id="eInfoT"></div></details></div>
+        <div class="right">
+          <div class="seg" id="eView" role="group" aria-label="Curve type"><button type="button" data-v="cdf">Cumulative</button><button type="button" data-v="pdf">Density</button></div>
+          <span>Show until</span>
+          <div class="seg" id="eHor" role="group" aria-label="Chart horizon"><button type="button" data-v="2040">2040</button><button type="button" data-v="2060">2060</button><button type="button" data-v="2100">2100</button></div>
+        </div>
+      </div>
+      <div class="chart" id="eChart"><div class="plot"></div><div class="guide"></div><div class="tip"></div></div>
+      <div id="sliders"></div>
+      <div id="distPanel" hidden>
+        <button class="btn" id="addComp" type="button">+ Add component</button>
+      </div>
+      <div id="pointsPanel" hidden style="display:flex;flex-direction:column;gap:10px">
+        <div id="pointRows"></div>
+        <div><button class="btn" id="addPoint" type="button">+ Add point</button></div>
+      </div>
+      <p class="note" id="fitNote"></p>
+      <div class="read" id="readout"></div>
+    </div>
+
+    <div class="card">
+      <h2>Submit your forecast</h2>
+      <form class="form" id="form">
+        <label>Name<input type="text" id="fName" maxlength="80" required autocomplete="name"></label>
+        <label>Organization (optional)<input type="text" id="fOrg" maxlength="80" list="orgList" autocomplete="organization"><datalist id="orgList"></datalist></label>
+        <label>Years of relevant experience<input type="number" id="fYears" min="0" max="70" step="1" value="0"></label>
+        <input type="text" id="fSite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px"><button class="btn primary" id="submitBtn" type="submit">Submit forecast</button>
+      </form>
+      <p class="note" id="nameHint" hidden></p>
+      <p class="note" id="status">Visible to everyone who can open this page.</p>
+    </div>
+  </section>
+
+  <section id="viewR" hidden>
+    <div class="read" id="rTiles"></div>
+    <div class="card">
+      <div class="bar">
+        <div class="left">
+          <div class="seg" id="rView" role="group" aria-label="Curve type"><button type="button" data-v="cdf">Cumulative</button><button type="button" data-v="pdf">Annual</button></div>
+          <div class="seg" id="rAvg" role="group" aria-label="Averaging method"><button type="button" data-v="geo">Geo mean of odds</button><button type="button" data-v="arith">Arithmetic mean</button></div>
+        </div>
+        <div class="right"><label id="oldWrap" hidden><input type="checkbox" id="incOld" checked> Include 99%-definition forecasts</label><span>Show until</span>
+          <div class="seg" id="rHor" role="group" aria-label="Chart horizon"><button type="button" data-v="2040">2040</button><button type="button" data-v="2060">2060</button><button type="button" data-v="2100">2100</button></div>
+        </div>
+      </div>
+      <div class="legend" id="rLegend"></div>
+      <div class="chart" id="rChart"><div class="plot"></div><div class="guide"></div><div class="tip"></div></div>
+      <p class="note" id="rNote"></p><details class="i"><summary aria-label="How the aggregate is computed">ⓘ</summary><div id="rInfoT"></div></details>
+    </div>
+    <div class="card">
+      <details id="indiv"><summary>Individual forecasts</summary>
+        <div class="tblw"><table><thead><tr><th>Show</th><th>Name</th><th>Organization</th><th class="num">Exp. (yrs)</th><th class="num">TAI def.</th><th class="num">Updated</th><th class="num">10%</th><th class="num">Median</th><th class="num">90%</th></tr></thead><tbody id="rBody"></tbody></table></div>
+      </details>
+    </div>
+  </section>
+</div>
+
+<div id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="dlg">
+    <h2 id="mTitle">How do you want to give your forecast?</h2>
+    <div class="choices">
+      <button class="choice" type="button" data-mode="points">
+        <svg viewBox="0 0 300 110" aria-hidden="true"><path d="M10 98 C80 96 110 70 150 55 S240 18 290 14" fill="none" style="stroke:var(--accent)" stroke-width="3"/><circle cx="92" cy="85" r="6" style="fill:var(--bg);stroke:var(--accent)" stroke-width="3"/><circle cx="150" cy="55" r="6" style="fill:var(--bg);stroke:var(--accent)" stroke-width="3"/><circle cx="232" cy="24" r="6" style="fill:var(--bg);stroke:var(--accent)" stroke-width="3"/></svg>
+        <span class="q">I want to say X% by a specific year</span>
+        <p>"10% before 2030, 50% before 2040." A curve is fitted through your points.</p>
+        <span class="go">Enter points</span>
+      </button>
+      <button class="choice" type="button" data-mode="dist">
+        <svg viewBox="0 0 300 110" aria-hidden="true"><path d="M10 84 C60 84 70 20 105 20 S150 78 185 66 S235 46 290 82 L290 84 Z" style="fill:none;stroke:var(--accent)" stroke-width="3"/><line x1="10" x2="290" y1="98" y2="98" style="stroke:var(--line)" stroke-width="2"/><line x1="70" x2="150" y1="98" y2="98" style="stroke:var(--accent)" stroke-width="4"/><circle cx="70" cy="98" r="6" style="fill:var(--bg);stroke:var(--accent)" stroke-width="3"/><rect x="99" y="92" width="12" height="12" rx="2" style="fill:var(--accent)"/><circle cx="150" cy="98" r="6" style="fill:var(--bg);stroke:var(--accent)" stroke-width="3"/></svg>
+        <span class="q">I know what I'm doing. Give me a distribution.</span>
+        <p>Metaculus-style sliders: drag quartiles, add weighted components.</p>
+        <span class="go">Use sliders</span>
+      </button>
+    </div>
+    <p class="note">You can switch later.</p>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ---------- time ---------- */
+const NOW=(()=>{const d=new Date(),y=d.getFullYear(),s=new Date(y,0,1),e=new Date(y+1,0,1);return y+(d-s)/(e-s)})();
+const Y0=Math.floor(NOW), GY0=Y0+1, GY1=2101; // stored grid: P(TAI before year Y), Y=GY0..GY1
+const $=id=>document.getElementById(id);
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+
+/* ---------- metalog (log-transformed, lower bound = today) ---------- */
+function basis(y,k){const L=Math.log(y/(1-y)),d=y-.5,r=[1,L,d*L,d];for(let j=5;j<=k;j++)r.push(j%2?Math.pow(d,(j-1)/2):Math.pow(d,j/2-1)*L);r.length=k;return r}
+function lstsq(A,z){const k=A[0].length,M=[];for(let i=0;i<k;i++){M.push(new Array(k+1).fill(0));for(let j=0;j<k;j++)for(const r of A)M[i][j]+=r[i]*r[j];A.forEach((r,n)=>M[i][k]+=r[i]*z[n])}
+  for(let c=0;c<k;c++){let p=c;for(let r=c+1;r<k;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;if(Math.abs(M[p][c])<1e-12)return null;[M[c],M[p]]=[M[p],M[c]];
+    for(let r=0;r<k;r++)if(r!==c){const f=M[r][c]/M[c][c];for(let j=c;j<=k;j++)M[r][j]-=f*M[c][j]}}
+  return M.map((r,i)=>r[k]/r[i])}
+const FEAS=(()=>{const g=[1e-7,1e-6,1e-5,1e-4];for(let y=.001;y<.9995;y+=.002)g.push(y);g.push(1-1e-4,1-1e-5,1-1e-6,1-1e-7);return g})();
+function mval(a,y){const b=basis(y,a.length);let s=0;for(let i=0;i<a.length;i++)s+=a[i]*b[i];return s}
+// Feasible = increasing everywhere AND never nearly flat. A nearly flat stretch of the quantile function is a spike in the density.
+function feasible(a){const typ=(mval(a,.9)-mval(a,.1))/(2*Math.log(9));if(!(typ>0))return false;let prev=null,pl=0;
+  for(const y of FEAS){const v=mval(a,y),l=Math.log(y/(1-y));if(prev!==null&&!((v-prev)/(l-pl)>.12*typ))return false;prev=v;pl=l}return true}
+/* ---------- slider components: a skewed bell (shifted lognormal; a plain normal when the quartiles are symmetric) ---------- */
+const QZ=0.67449,RMAX=2.5; // RMAX caps how lopsided one component may be, which keeps its peak from turning into a spike
+function Phi(z){const t=1/(1+.2316419*Math.abs(z)),d=.3989423*Math.exp(-z*z/2),p=d*t*(.3193815+t*(-.3565638+t*(1.781478+t*(-1.821256+t*1.330274))));return z>0?1-p:p}
+// Closed form through the three handles. Whatever falls before today is cut off and the rest rescaled.
+function fitComp(c){const r=clamp((c.hi-c.mid)/(c.mid-c.lo),1/RMAX,RMAX),g=Math.log(r)/QZ,flat=Math.abs(g)<1e-6,s=flat?(c.hi-c.mid)/QZ:(c.hi-c.mid)*g/(Math.exp(g*QZ)-1);
+  const raw=x=>{if(flat)return Phi((x-c.mid)/s);const u=1+g*(x-c.mid)/s;return u<=0?(g>0?0:1):Phi(Math.log(u)/g)},f0=raw(NOW);
+  if(!(s>0)||!(f0<.98))return null;return {cut:f0,cdf:x=>x<=NOW?0:(raw(x)-f0)/(1-f0)}}
+function fitMetalog(pts,B){ // pts: [{p in (0,1), x > B}], B = lower bound (defaults to today)
+  if(B==null)B=NOW;const z=pts.map(q=>Math.log(q.x-B));
+  for(let k=Math.min(pts.length,5);k>=2;k--){const a=lstsq(pts.map(q=>basis(q.p,k)),z);if(!a||!a.every(isFinite)||!feasible(a))continue;
+    let err=0;pts.forEach(q=>{err=Math.max(err,Math.abs(B+Math.exp(mval(a,q.p))-q.x))});
+    if(err>.5)break; // too jagged for one smooth curve: connect the points instead
+    return {a,k,err,cdf(x){if(x<=B)return 0;const t=Math.log(x-B);let lo=1e-12,hi=1-1e-12;if(mval(a,lo)>=t)return 0;if(mval(a,hi)<=t)return 1;for(let i=0;i<54;i++){const m=(lo+hi)/2;mval(a,m)<t?lo=m:hi=m}return (lo+hi)/2}}}
+  // Fallback: straight segments in (log time, log odds), which passes through every point and stays monotone.
+  const l=pts.map(q=>Math.log(q.p/(1-q.p))),n=pts.length;for(let i=1;i<n;i++)if(!(z[i]>z[i-1]&&l[i]>l[i-1]))return null;
+  return {k:0,err:0,direct:true,cdf(x){if(x<=B)return 0;const t=Math.log(x-B);let i=1;while(i<n-1&&t>z[i])i++;return 1/(1+Math.exp(-(l[i-1]+(l[i]-l[i-1])*(t-z[i-1])/(z[i]-z[i-1]))))}}}
+function quantileOf(cdf,q){let lo=NOW,hi=NOW+3000;if(cdf(hi)<q)return Infinity;for(let i=0;i<60;i++){const m=(lo+hi)/2;cdf(m)<q?lo=m:hi=m}return (lo+hi)/2}
+
+/* ---------- editor state ---------- */
+const S={mode:null,view:'cdf',horizon:2060,points:[{p:10,year:null},{p:50,year:null}],comps:[],distTouched:false,saved:false};
+const R={view:'cdf',avg:'geo',horizon:2060,rows:[],overlay:{},loaded:false,incOld:true};
+function defaultComp(){const a=Math.max(NOW+1,Y0+1),span=S.horizon-a;return {lo:a+span*.25,mid:a+span*.5,hi:a+span*.75,w:50}}
+try{const d=JSON.parse(localStorage.getItem('tai-draft')||'null');if(d&&d.S)Object.assign(S,d.S)}catch(e){}
+function persist(){try{localStorage.setItem('tai-draft',JSON.stringify({S}))}catch(e){}}
+
+function validPoints(){return S.points.filter(q=>Number.isFinite(q.p)&&q.p>0&&q.p<100&&Number.isFinite(q.year)&&q.year>NOW+.05&&q.year<=2500).map(q=>({p:q.p/100,x:q.year})).sort((a,b)=>a.x-b.x)}
+function model(){ // -> {ok,cdf,note,err,comps}
+  if(S.mode==='dist'){
+    const fits=S.comps.map(fitComp);
+    if(!fits.length||fits.some(f=>!f))return {ok:false,err:'This shape cannot be fitted. Move the handles further apart.'};
+    const W=S.comps.reduce((s,c)=>s+c.w,0)||1,ws=S.comps.map(c=>c.w/W);
+    return {ok:true,cdf:x=>fits.reduce((s,f,i)=>s+ws[i]*f.cdf(x),0),parts:fits.map((f,i)=>({cdf:f.cdf,w:ws[i]})),
+      info:'Each component is a bell: a normal, or a skewed (shifted lognormal) one when the quartiles are uneven. Circles are the 25% and 75% quartiles, the square is the median; drag the square to move all three. One side can be at most 2.5 times as wide as the other; add a component for more skew or a second peak. Anything before today is cut off and the rest rescaled'+(fits.some(f=>f.cut>.03)?' ('+Math.round(Math.max(...fits.map(f=>f.cut))*100)+'% here)':'')+'. The numbers under each slider are the quartiles after that cut.'};
+  }
+  const v=validPoints();
+  if(v.length<2)return {ok:false,hint:v.length?'Add a second point':'Enter two points'};
+  for(let i=1;i<v.length;i++){if(v[i].x===v[i-1].x)return {ok:false,err:'Two points share the same year. Give each point its own year.'};if(v[i].p<=v[i-1].p)return {ok:false,err:'A later year needs a higher probability than an earlier one.'}}
+  const f=fitMetalog(v);if(!f)return {ok:false,err:'No smooth curve fits these points. Try spacing them out.'};
+  return {ok:true,cdf:f.cdf,info:(f.direct?'These points are too jagged for one smooth metalog curve, so the curve connects them directly.':'The curve is a metalog fitted through your '+v.length+' points, starting today.')+' "Before 2030" means before 1 January 2030. On the cumulative chart you can drag the points.'};
+}
+function gridOf(cdf){const g=[];let m=0;for(let Y=GY0;Y<=GY1;Y++){m=Math.max(m,clamp(cdf(Y),0,1));g.push(+m.toFixed(5))}return g}
+
+/* ---------- chart ---------- */
+const MG={l:46,r:16,t:12,b:28};
+const pct=v=>v==null?'–':v<.0005?'<0.1%':v<.1?(v*100).toFixed(1)+'%':Math.round(v*100)+'%';
+function interp(pts,x){if(!pts.length||x<pts[0][0]||x>pts[pts.length-1][0])return null;let lo=0,hi=pts.length-1;while(hi-lo>1){const m=(lo+hi)>>1;pts[m][0]<=x?lo=m:hi=m}const a=pts[lo],b=pts[hi];return b[0]===a[0]?a[1]:a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0])}
+function niceStep(max){const r=max/4,e=Math.pow(10,Math.floor(Math.log10(r))),f=r/e;return (f<1.5?1:f<3.5?2:f<7.5?5:10)*e}
+function drawChart(host,c){
+  const W=Math.max(280,host.clientWidth),H=W<520?250:340,pw=W-MG.l-MG.r,ph=H-MG.t-MG.b;
+  const X=x=>MG.l+(x-c.xmin)/(c.xmax-c.xmin)*pw,Yp=y=>MG.t+(1-y/c.ymax)*ph;
+  const span=c.xmax-c.xmin,xs=span<=16?2:span<=40?5:10,id=host.id+'clip';
+  let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${c.aria}"><defs><clipPath id="${id}"><rect x="${MG.l}" y="${MG.t-4}" width="${pw}" height="${ph+4}"/></clipPath></defs>`;
+  for(const t of c.yticks)s+=`<line class="grid" x1="${MG.l}" x2="${W-MG.r}" y1="${Yp(t)}" y2="${Yp(t)}"/><text class="tick" x="${MG.l-7}" y="${Yp(t)+4}" text-anchor="end">${c.yfmt(t)}</text>`;
+  for(let t=Math.ceil(c.xmin/xs)*xs;t<=c.xmax;t+=xs)s+=`<line class="grid" x1="${X(t)}" x2="${X(t)}" y1="${MG.t}" y2="${MG.t+ph}"/><text class="tick" x="${X(t)}" y="${H-9}" text-anchor="middle">${t}</text>`;
+  s+=`<line class="today" x1="${X(NOW)}" x2="${X(NOW)}" y1="${MG.t}" y2="${MG.t+ph}"/><text class="axl" x="${X(NOW)+4}" y="${MG.t+10}">today</text><line class="axis" x1="${MG.l}" x2="${W-MG.r}" y1="${MG.t+ph}" y2="${MG.t+ph}"/>`;
+  s+=`<g clip-path="url(#${id})">`;
+  for(const q of c.series){if(q.pts.length<2)continue;const d=q.pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Yp(p[1]).toFixed(1)).join('');
+    if(q.fill)s+=`<path d="${d}L${X(q.pts[q.pts.length-1][0]).toFixed(1)} ${Yp(0)}L${X(q.pts[0][0]).toFixed(1)} ${Yp(0)}Z" style="fill:${q.color};opacity:.13"/>`;
+    s+=`<path d="${d}" fill="none" stroke-linejoin="round" style="stroke:${q.color}" stroke-width="${q.width||2}"${q.dash?` stroke-dasharray="${q.dash}"`:''}/>`}
+  s+='</g>';
+  (c.dots||[]).forEach(d=>{if(d.x>c.xmax)return;s+=`<circle class="dot" cx="${X(d.x)}" cy="${Yp(d.y)}" r="6"/><circle class="dotHit" data-dot="${d.i}" cx="${X(d.x)}" cy="${Yp(d.y)}" r="16"/>`});
+  if(c.empty)s+=`<text class="emptyT" x="${MG.l+pw/2}" y="${MG.t+ph/2}" text-anchor="middle">${c.empty}</text>`;
+  host.querySelector('.plot').innerHTML=s+'</svg>';
+  host._c=c;host._inv={x:px=>c.xmin+(px-MG.l)/pw*span,y:py=>(1-(py-MG.t)/ph)*c.ymax,X,H,W,ph};
+  const g=host.querySelector('.guide');g.style.top=MG.t+'px';g.style.height=ph+'px';
+  if(!host._wired){host._wired=true;wireChart(host)}
+}
+function wireChart(host){
+  const tip=host.querySelector('.tip'),guide=host.querySelector('.guide');let drag=null;
+  const hide=()=>{tip.style.display=guide.style.display='none'};
+  const pos=e=>{const r=host.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top]};
+  host.addEventListener('pointermove',e=>{
+    if(drag!=null)return;const c=host._c,iv=host._inv,[px]=pos(e);const xr=iv.x(px);
+    if(xr<c.xmin||xr>c.xmax||!c.series.some(q=>q.name)){hide();return}
+    const x=clamp(c.snap(xr),c.xmin,c.xmax);tip.textContent='';
+    const h=document.createElement('div');h.className='h';h.textContent=c.head(x);tip.appendChild(h);let any=false;
+    for(const q of c.series){if(!q.name)continue;const v=interp(q.pts,x);if(v==null)continue;any=true;
+      const r=document.createElement('div');r.className='r';const a=document.createElement('span'),sw=document.createElement('span'),b=document.createElement('b');
+      sw.className='sw';sw.style.background=q.color;a.appendChild(sw);a.appendChild(document.createTextNode(q.name));b.textContent=c.vfmt(v);r.appendChild(a);r.appendChild(b);tip.appendChild(r)}
+    if(!any){hide();return}
+    const gx=iv.X(x);guide.style.left=gx+'px';guide.style.display=tip.style.display='block';
+    tip.style.left=(gx>iv.W/2?Math.max(0,gx-tip.offsetWidth-10):gx+10)+'px';
+  });
+  host.addEventListener('pointerleave',hide);
+  host.addEventListener('pointerdown',e=>{const t=e.target;if(!(t instanceof Element)||!t.hasAttribute('data-dot'))return;drag=+t.getAttribute('data-dot');hide();e.preventDefault()});
+  window.addEventListener('pointermove',e=>{if(drag==null)return;const [px,py]=pos(e),c=host._c;c.onDrag&&c.onDrag(drag,host._inv.x(px),host._inv.y(py))});
+  window.addEventListener('pointerup',()=>{if(drag!=null){drag=null;persist()}});
+}
+
+/* ---------- editor rendering ---------- */
+function setSeg(el,v){el.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===String(v))))}
+function curve(cdf,xmin,xmax,view){const n=260,pts=[],h=(xmax-xmin)/n;
+  if(view==='cdf'){for(let i=0;i<=n;i++){const x=xmin+i*h;pts.push([x,cdf(x)])}return pts}
+  let prev=cdf(xmin-h/2);for(let i=0;i<=n;i++){const x=xmin+i*h,nx=cdf(x+h/2);pts.push([x,Math.max(0,(nx-prev)/h)]);prev=nx}return pts}
+let lastModel=null;
+function renderEditor(){
+  if(!S.mode)return;
+  const m=lastModel=model(),host=$('eChart'),xmin=Y0,xmax=S.horizon,series=[],dots=[];
+  let ymax=1,yticks=[0,.25,.5,.75,1],yfmt=t=>Math.round(t*100)+'%';
+  if(m.ok){
+    const main=curve(m.cdf,xmin,xmax,S.view);
+    if(S.view==='pdf'){const mx=Math.max(.002,...main.map(p=>p[1]));const st=niceStep(mx*1.12);yticks=[];for(let t=0;t<mx*1.12+st*.5;t+=st)yticks.push(t);ymax=yticks[yticks.length-1];yfmt=t=>+(t*100).toFixed(2)+'%'}
+    if(m.parts&&m.parts.length>1)m.parts.forEach(p=>series.push({pts:curve(x=>p.w*p.cdf(x),xmin,xmax,S.view),color:'var(--accent)',width:1.2,dash:'4 4'}));
+    series.push({pts:main,color:'var(--accent)',width:2.5,fill:true,name:S.view==='cdf'?'TAI by then':'per year'});
+  }
+  if(S.mode==='points'&&S.view==='cdf')S.points.forEach((q,i)=>{if(Number.isFinite(q.year)&&q.year>NOW+.05&&q.p>0&&q.p<100)dots.push({i,x:q.year,y:q.p/100})});
+  drawChart(host,{xmin,xmax,ymax,yticks,yfmt,series,dots,aria:'Your forecast curve',empty:m.ok?'':(m.hint||''),
+    snap:x=>S.view==='cdf'?Math.round(x):Math.floor(x)+.5,head:x=>S.view==='cdf'?'before '+x:'during '+Math.floor(x),vfmt:pct,
+    onDrag(i,x,y){const q=S.points[i];q.year=clamp(Math.round(x),GY0,S.horizon);q.p=clamp(Math.round(y*100),1,99);syncPointInputs();renderEditor()}});
+  const note=$('fitNote');note.className='note'+(m.err?' err':'');note.textContent=m.err||(S.mode==='dist'&&!S.distTouched?'Move a handle to make it yours.':'');$('eInfoT').textContent=m.info||(S.mode==='points'?'Enter at least two points. "Before 2030" means before 1 January 2030.':'');$('eInfo').hidden=!$('eInfoT').textContent;
+  const rd=$('readout');rd.textContent='';
+  const cell=(k,v,cls)=>{const d=document.createElement('div');if(cls)d.className=cls;const a=document.createElement('span'),b=document.createElement('span');a.className='k';b.className='v';a.textContent=k;b.textContent=v;d.appendChild(a);d.appendChild(b);rd.appendChild(d)};
+  const qy=q=>{if(!m.ok)return '–';const x=quantileOf(m.cdf,q);return x>=2300?'after 2300':String(Math.floor(x+1e-6))};
+  cell('10% by',qy(.1));cell('25% by',qy(.25));cell('Median',qy(.5),'med');cell('75% by',qy(.75));cell('90% by',qy(.9));
+  [2030,2040,2100].filter(y=>y>Y0).forEach(y=>cell('Before '+y,m.ok?pct(m.cdf(y)):'–'));
+  updateSliders();updateSubmit();
+  if(!$('viewR').hidden)renderResults();
+}
+function syncPointInputs(){document.querySelectorAll('#pointRows .pt').forEach((r,i)=>{const q=S.points[i];if(!q)return;const p=r.querySelector('.p'),y=r.querySelector('.y');if(document.activeElement!==p)p.value=q.p??'';if(document.activeElement!==y)y.value=q.year??''})}
+function buildPoints(){const host=$('pointRows');host.textContent='';
+  S.points.forEach((q,i)=>{const r=document.createElement('div');r.className='pt';
+    r.innerHTML=`<input class="p" id="pp${i}" type="number" min="1" max="99" step="1" aria-label="Probability in percent"><span class="t">% chance of TAI before</span><input class="y" id="py${i}" type="number" min="${GY0}" max="2500" step="any" placeholder="Year" aria-label="Year"><button class="x" type="button" aria-label="Remove point" ${S.points.length<=2?'hidden':''}>×</button>`;
+    const p=r.querySelector('.p'),y=r.querySelector('.y');p.value=q.p??'';y.value=q.year??'';
+    p.addEventListener('input',()=>{q.p=p.value===''?null:+p.value;renderEditor();persist()});
+    y.addEventListener('input',()=>{q.year=y.value===''?null:+y.value;renderEditor();persist()});
+    r.querySelector('.x').addEventListener('click',()=>{S.points.splice(i,1);buildPoints();renderEditor();persist()});
+    host.appendChild(r)})}
+function buildSliders(){const host=$('sliders');host.textContent='';host.style.padding=`0 ${MG.r}px 0 ${MG.l}px`;
+  if(S.mode!=='dist')return;
+  S.comps.forEach((c,i)=>{const w=document.createElement('div');w.className='comp';
+    w.innerHTML=`<div class="track"><div class="range"></div><button type="button" class="handle" data-k="lo" role="slider" aria-label="25% quartile"></button><button type="button" class="handle mid" data-k="mid" role="slider" aria-label="Median"></button><button type="button" class="handle" data-k="hi" role="slider" aria-label="75% quartile"></button></div>
+      <div class="compMeta"><span>25% <span class="q" data-q="lo"></span></span><span>median <span class="q" data-q="mid"></span></span><span>75% <span class="q" data-q="hi"></span></span>
+      ${S.comps.length>1?`<label>weight <input type="range" id="cw${i}" min="1" max="100" value="${c.w}"> <span class="q" data-q="w"></span></label><button class="x" type="button" aria-label="Remove component">×</button>`:''}</div>`;
+    const track=w.querySelector('.track');
+    const move=(k,x)=>{const lim=[NOW+.1,2400],g=.25;x=clamp(x,lim[0],lim[1]);
+      if(k==='mid'){const d=clamp(x-c.mid,lim[0]+g-c.lo,1e9);c.lo+=d;c.mid+=d;c.hi+=d}
+      else if(k==='lo')c.lo=clamp(Math.min(x,c.mid-g),c.mid-RMAX*(c.hi-c.mid),c.mid-(c.hi-c.mid)/RMAX);else c.hi=clamp(Math.max(x,c.mid+g),c.mid+(c.mid-c.lo)/RMAX,c.mid+RMAX*(c.mid-c.lo));
+      if(c.lo<lim[0])c.lo=lim[0];S.distTouched=true;renderEditor()};
+    w.querySelectorAll('.handle').forEach(h=>{const k=h.dataset.k;
+      h.addEventListener('pointerdown',e=>{e.preventDefault();h.focus();const off=c[k]-xAt(track,e.clientX);
+        const mv=ev=>move(k,xAt(track,ev.clientX)+off),up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);persist()};
+        window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up)});
+      h.addEventListener('keydown',e=>{const d=e.key==='ArrowLeft'?-1:e.key==='ArrowRight'?1:0;if(!d)return;e.preventDefault();move(k,c[k]+d*(e.shiftKey?2:.25));persist()})});
+    const wi=w.querySelector('input[type=range]');if(wi)wi.addEventListener('input',()=>{c.w=+wi.value;S.distTouched=true;renderEditor();persist()});
+    const rm=w.querySelector('.x');if(rm)rm.addEventListener('click',()=>{S.comps.splice(i,1);buildSliders();renderEditor();persist()});
+    host.appendChild(w)});
+  updateSliders()}
+function xAt(track,clientX){const r=track.getBoundingClientRect();return Y0+(clientX-r.left)/r.width*(S.horizon-Y0)}
+function updateSliders(){if(S.mode!=='dist')return;const W=S.comps.reduce((s,c)=>s+c.w,0)||1;
+  document.querySelectorAll('#sliders .comp').forEach((el,i)=>{const c=S.comps[i];if(!c)return;const P=x=>clamp((x-Y0)/(S.horizon-Y0)*100,0,100);
+    el.querySelectorAll('.handle').forEach(h=>{const v=c[h.dataset.k];h.style.left=P(v)+'%';h.setAttribute('aria-valuenow',v.toFixed(2));h.setAttribute('aria-valuetext',String(Math.floor(v)))});
+    const r=el.querySelector('.range');r.style.left=P(c.lo)+'%';r.style.width=(P(c.hi)-P(c.lo))+'%';
+    const f=fitComp(c),QP={lo:.25,mid:.5,hi:.75};el.querySelectorAll('.q').forEach(q=>{const k=q.dataset.q;q.textContent=k==='w'?Math.round(c.w/W*100)+'%':f?String(Math.floor(quantileOf(f.cdf,QP[k]))):'–'})})}
+
+function setMode(mode){
+  const prev=S.mode,m=prev?model():null;
+  if(mode==='dist'&&(!S.comps.length||!S.distTouched)){
+    if(prev==='points'&&m&&m.ok){S.comps=[{lo:quantileOf(m.cdf,.25),mid:quantileOf(m.cdf,.5),hi:quantileOf(m.cdf,.75),w:50}];S.distTouched=true}
+    else if(!S.comps.length)S.comps=[defaultComp()];
+  }
+  if(mode==='points'&&prev==='dist'&&S.distTouched&&m&&m.ok&&validPoints().length<2){let last=Y0;S.points=[10,50,90].map(p=>{let y=Math.max(last+1,Math.round(quantileOf(m.cdf,p/100)));y=Math.min(y,2500);last=y;return {p,year:y}})}
+  S.mode=mode;S.view=mode==='dist'?'pdf':'cdf';
+  $('modeLabel').textContent=mode==='dist'?'Sliders':'Points';
+  $('pointsPanel').hidden=mode!=='points';$('pointsPanel').style.display=mode==='points'?'flex':'none';$('distPanel').hidden=mode!=='dist';
+  setSeg($('eView'),S.view);setSeg($('eHor'),S.horizon);buildPoints();buildSliders();renderEditor();persist();
+}
+function openModal(){$('modal').hidden=false;$('modal').querySelector('.choice').focus()}
+function closeModal(mode){$('modal').hidden=true;setMode(mode||S.mode||'points')}
+document.querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.mode)));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('modal').hidden)closeModal()});
+$('switchMode').addEventListener('click',openModal);
+$('addPoint').addEventListener('click',()=>{const used=S.points.map(q=>q.p),next=[10,50,90,25,75,5,95].find(p=>!used.includes(p))??null;S.points.push({p:next,year:null});buildPoints();renderEditor();persist();const ys=document.querySelectorAll('#pointRows .y');ys[ys.length-1].focus()});
+$('addComp').addEventListener('click',()=>{S.comps.push(defaultComp());S.distTouched=true;buildSliders();renderEditor();persist()});
+function wireSeg(el,fn){el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setSeg(el,b.dataset.v);fn(b.dataset.v)})}
+wireSeg($('eView'),v=>{S.view=v;renderEditor();persist()});
+wireSeg($('eHor'),v=>{S.horizon=+v;renderEditor();persist()});
+
+/* ---------- shared data ---------- */
+// Backend: a Google Apps Script web app attached to the sheet (see README). Paste its /exec URL here.
+const API='PASTE_YOUR_APPS_SCRIPT_URL_HERE';
+const apiSet=/^https:\/\/script\.google\.com\//.test(API);
+const myKey=()=>nameKey($('fName').value);
+const parse=v=>{if(Array.isArray(v))return v;try{const j=JSON.parse(v);return Array.isArray(j)?j:null}catch(e){return null}};
+// One sheet row = one submission. Rows are never edited, so the sheet is the full history.
+function rowDoc(r){return {name:r.name,org:r.org,years:r.years===''||r.years==null?null:r.years,definition:r.definition,mode:r.mode,points:parse(r.points)||[],comps:parse(r.comps)||[],y0:Number.isInteger(+r.y0)&&r.y0!==''?+r.y0:null,cdf:parse(r.cdf),updatedAt:String(r.at||'')}}
+const decYear=t=>{const d=new Date(t);if(isNaN(d))return null;const y=d.getFullYear(),a=new Date(y,0,1),b=new Date(y+1,0,1);return y+(d-a)/(b-a)};
+const OLD_DEF=d=>/99%/.test(String(d||''));
+function cleanRow(id,d){if(!d)return null;let cdf=null,y0=GY0;
+  if(Array.isArray(d.cdf)&&Number.isInteger(d.y0)){let m=0;cdf=d.cdf.slice(0,200).map(v=>{m=Math.max(m,clamp(+v||0,0,1));return m});y0=d.y0}
+  else if(Array.isArray(d.points)){ // imported forecasts store only their points: refit them from the day they were made
+    const B=Math.min(NOW,decYear(d.updatedAt)??NOW),pts=d.points.slice(0,20).map(q=>({p:+q.p/100,x:+q.year})).filter(q=>q.p>0&&q.p<1&&q.x>B+.02).sort((a,b)=>a.x-b.x);
+    const f=pts.length>=2?fitMetalog(pts,B):null;if(f)cdf=gridOf(f.cdf)}
+  if(!cdf||cdf.length<2)return null;
+  return {id,name:String(d.name||'Anonymous').trim().slice(0,80)||'Anonymous',org:canonOrg(d.org),years:d.years==null?null:clamp(+d.years||0,0,99),y0,cdf,at:String(d.updatedAt||''),old:OLD_DEF(d.definition),raw:d}}
+const ORGS=['Epoch AI','OpenAI','Anthropic','Google DeepMind','METR','Machine Intelligence Research Institute','AI Futures Project','Redwood Research','Alignment Research Center','FAR.AI','Center for AI Safety','Centre for the Governance of AI','AI Security Institute','Center for Human-Compatible AI','Center for Security and Emerging Technology','Future of Life Institute','Future of Humanity Institute','Centre for the Study of Existential Risk','Leverhulme Centre for the Future of Intelligence','Stanford Institute for Human-Centered Artificial Intelligence','Center for AI and Digital Policy','AI Safety Camp','The Institute for Ethical AI & Machine Learning','All Tech Is Human','Partnership on AI','Responsible AI Institute','Institute for Ethics in Artificial Intelligence - TUM','Ada Lovelace Institute','Fund for Alignment Research','OECD.AI','Apart Research','Cambridge AI Safety Hub',"Centre pour la Sécurité de l'IA",'EleutherAI','AI for Good Foundation','AI Objectives Institute','Center for Applied Rationality','Oxford Martin AI Governance Initiative','Berkeley Existential Risk Initiative','Thinking Machines','Global Catastrophic Risk Institute','Institute for Law & AI','BlueDot Impact','Institute for AI Policy and Strategy','GoodAI','MATS Research','Ought','Cooperative AI Foundation','Conjecture','PauseAI'];
+const ALIAS={'epoch':'Epoch AI','deepmind':'Google DeepMind','gdm':'Google DeepMind','google':'Google DeepMind','miri':'Machine Intelligence Research Institute','model evaluation and threat research':'METR','redwood':'Redwood Research','arc':'Alignment Research Center','far ai':'FAR.AI','far':'FAR.AI','cais':'Center for AI Safety','govai':'Centre for the Governance of AI','aisi':'AI Security Institute','uk aisi':'AI Security Institute','ai safety institute':'AI Security Institute','chai':'Center for Human-Compatible AI','cset':'Center for Security and Emerging Technology','fli':'Future of Life Institute','fhi':'Future of Humanity Institute','cser':'Centre for the Study of Existential Risk','cfi':'Leverhulme Centre for the Future of Intelligence','hai':'Stanford Institute for Human-Centered Artificial Intelligence','stanford hai':'Stanford Institute for Human-Centered Artificial Intelligence','pai':'Partnership on AI','far.ai':'FAR.AI','cesia':"Centre pour la Sécurité de l'IA",'cfar':'Center for Applied Rationality','beri':'Berkeley Existential Risk Initiative','gcri':'Global Catastrophic Risk Institute','lawai':'Institute for Law & AI','bluedot':'BlueDot Impact','iaps':'Institute for AI Policy and Strategy','mats':'MATS Research','ai futures':'AI Futures Project','aifp':'AI Futures Project','open ai':'OpenAI'};
+ORGS.forEach(o=>ALIAS[o.toLowerCase()]=o);
+const canonOrg=o=>{const t=String(o||'').trim().replace(/\s+/g,' ').slice(0,80);return ALIAS[t.toLowerCase()]||t};
+const nameKey=n=>String(n||'').trim().toLowerCase().replace(/\s+/g,' ');
+function people(){ // one row per name: the most recent submission under that name wins
+  const by={};for(const r of R.rows){if(r.old&&!R.incOld)continue;const k=nameKey(r.name);if(!by[k]||r.at>by[k].at)by[k]=r}return Object.values(by)}
+const rowF=(r,Y)=>Y<r.y0?0:r.cdf[Math.min(Y-r.y0,r.cdf.length-1)];
+function average(rows,method){const out=[];for(let Y=GY0;Y<=GY1;Y++){let s=0;for(const r of rows){const p=rowF(r,Y);if(method==='geo'){const q=clamp(p,1e-4,1-1e-4);s+=Math.log(q/(1-q))}else s+=p}
+    s/=rows.length;out.push(method==='geo'?1/(1+Math.exp(-s)):s)}return out}
+function gridPts(g,view){if(view==='cdf'){const p=[[NOW,0]];g.forEach((v,i)=>p.push([GY0+i,v]));return p}
+  const p=[[(NOW+GY0)/2,g[0]]];for(let i=1;i<g.length;i++)p.push([GY0+i-.5,Math.max(0,g[i]-g[i-1])]);return p}
+function gridQuantile(g,q){if(g[g.length-1]<q)return 'after '+(GY1-1);let prevX=NOW,prevV=0;for(let i=0;i<g.length;i++){if(g[i]>=q){const x=prevX+(GY0+i-prevX)*(q-prevV)/Math.max(1e-9,g[i]-prevV);return String(Math.floor(x+1e-6))}prevX=GY0+i;prevV=g[i]}return '–'}
+function renderResults(){
+  const rows=people(),host=$('rChart'),series=[],leg=$('rLegend');leg.textContent='';const nOld=rows.filter(r=>r.old).length,allOld=R.rows.some(r=>r.old);$('oldWrap').hidden=!allOld;
+  const addLeg=(name,color,cls)=>{const s=document.createElement('span'),l=document.createElement('span');l.className='ln '+(cls||'');l.style.borderTopColor=color;s.appendChild(l);s.appendChild(document.createTextNode(name));leg.appendChild(s)};
+  $('nCount').textContent=R.loaded?'('+rows.length+')':'';
+  let agg=null;
+  if(rows.length){
+    const groups={};rows.forEach(r=>{if(!r.org)return;const k=r.org.toLowerCase();(groups[k]=groups[k]||{name:r.org,rows:[]}).rows.push(r)});
+    const top=Object.values(groups).sort((a,b)=>b.rows.length-a.rows.length||a.name.localeCompare(b.name)).slice(0,4);
+    top.forEach((g,i)=>{const col=`var(--o${i+1})`,nm=g.name+' (n='+g.rows.length+')';series.push({pts:gridPts(average(g.rows,R.avg),R.view),color:col,width:1.75,name:nm});addLeg(nm,col,'thin')});
+    rows.forEach(r=>{if(R.overlay[r.id]){series.push({pts:gridPts(average([r],'arith'),R.view),color:'var(--muted)',width:1.25,name:r.name});}});
+    if(Object.keys(R.overlay).some(k=>R.overlay[k]))addLeg('Selected individuals','var(--muted)','thin');
+    agg=average(rows,R.avg);const nm='All forecasters (n='+rows.length+')';
+    series.push({pts:gridPts(agg,R.view),color:'var(--ink)',width:3.25,fill:true,name:nm});
+    const s0=document.createElement('span'),l0=document.createElement('span');l0.className='ln';l0.style.borderTopColor='var(--ink)';s0.appendChild(l0);s0.appendChild(document.createTextNode(nm));leg.insertBefore(s0,leg.firstChild);
+  }
+  const you=lastModel&&lastModel.ok?gridOf(lastModel.cdf):null;
+  if(you){series.push({pts:gridPts(you,R.view),color:'var(--accent)',width:2.25,dash:'6 4',name:S.saved?'You':'You (not submitted)'});addLeg(S.saved?'You':'You (not submitted)','var(--accent)','dash')}
+  let ymax=1,yticks=[0,.25,.5,.75,1],yfmt=t=>Math.round(t*100)+'%';
+  if(R.view==='pdf'){let mx=.002;series.forEach(q=>q.pts.forEach(p=>{if(p[0]<=R.horizon)mx=Math.max(mx,p[1])}));const st=niceStep(mx*1.1);yticks=[];for(let t=0;t<mx*1.1+st*.5;t+=st)yticks.push(t);ymax=yticks[yticks.length-1];yfmt=t=>+(t*100).toFixed(2)+'%'}
+  drawChart(host,{xmin:Y0,xmax:R.horizon,ymax,yticks,yfmt,series,aria:'Aggregate forecast chart',
+    empty:series.length?'':(R.loaded?'No forecasts yet':R.msg||'Loading forecasts…'),
+    snap:x=>R.view==='cdf'?Math.max(GY0,Math.round(x)):Math.max(GY0,Math.floor(x))+.5,head:x=>R.view==='cdf'?'before '+x:'during '+Math.floor(x),vfmt:pct});
+  $('rNote').textContent=rows.length?'':(R.loaded?'':R.msg||'');
+  $('rInfoT').textContent=(R.avg==='geo'?'The black line pools every individual forecast with the geometric mean of odds.':'The black line is the arithmetic mean of every individual forecast.')+' Thin lines are the four organizations with the most forecasters, averaged the same way. One forecast per name: the latest.'+(nOld?' '+nOld+' forecasts were made under the earlier 99% definition.':'');
+  const t=$('rTiles');t.textContent='';
+  const cell=(k,v,cls)=>{const d=document.createElement('div');if(cls)d.className=cls;const a=document.createElement('span'),b=document.createElement('span');a.className='k';b.className='v';a.textContent=k;b.textContent=v;d.appendChild(a);d.appendChild(b);t.appendChild(d)};
+  cell('Forecasters',R.loaded?String(rows.length):'–');cell('Aggregate median',agg?gridQuantile(agg,.5):'–','med');
+  [2030,2040,2060].filter(y=>y>GY0).forEach(y=>cell('Before '+y,agg?pct(agg[y-GY0]):'–'));
+  const body=$('rBody');body.textContent='';
+  $('indiv').querySelector('summary').textContent='Individual forecasts ('+rows.length+')';
+  rows.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(r=>{const tr=document.createElement('tr');
+    const td=(v,c)=>{const e=document.createElement('td');if(c)e.className=c;e.textContent=v;tr.appendChild(e);return e};
+    const c0=document.createElement('td'),cb=document.createElement('input');cb.type='checkbox';cb.id='ov-'+r.id;cb.checked=!!R.overlay[r.id];cb.setAttribute('aria-label','Show '+r.name+' on the chart');cb.addEventListener('change',()=>{R.overlay[r.id]=cb.checked;renderResults()});c0.appendChild(cb);tr.appendChild(c0);
+    td(r.name+(myKey()&&nameKey(r.name)===myKey()?' (you)':''),'nm');td(r.org||'–','nm');td(r.years==null?'–':String(r.years),'num');td(r.old?'99%':'98%','num');td(r.at?r.at.slice(0,10):'–','num');td(gridQuantile(r.cdf.length?average([r],'arith'):[],.1),'num');td(gridQuantile(average([r],'arith'),.5),'num');td(gridQuantile(average([r],'arith'),.9),'num');body.appendChild(tr)});
+  const dl=$('orgList');dl.textContent='';[...new Set(ORGS.concat(rows.map(r=>r.org).filter(Boolean)))].sort((a,b)=>a.localeCompare(b)).forEach(o=>{const op=document.createElement('option');op.value=o;dl.appendChild(op)});
+}
+wireSeg($('rView'),v=>{R.view=v;renderResults()});wireSeg($('rAvg'),v=>{R.avg=v;renderResults()});wireSeg($('rHor'),v=>{R.horizon=+v;renderResults()});
+$('incOld').addEventListener('change',e=>{R.incOld=e.target.checked;renderResults()});
+setSeg($('rView'),R.view);setSeg($('rAvg'),R.avg);setSeg($('rHor'),R.horizon);
+
+/* ---------- same-name overwrite ---------- */
+function nameHint(){const el=$('nameHint'),k=nameKey($('fName').value),hit=k?R.rows.filter(r=>nameKey(r.name)===k).sort((a,b)=>a.at<b.at?1:-1)[0]:null;
+  el.hidden=!hit;if(!hit)return;el.textContent='"'+hit.name+'" already has a forecast'+(hit.at?' ('+hit.at.slice(0,10)+')':'')+'. Submitting replaces it. ';
+  const b=document.createElement('button');b.type='button';b.className='btn link';b.textContent='Load it';b.addEventListener('click',()=>{loadForecast(hit.raw);if(!$('fOrg').value)$('fOrg').value=hit.org;if(hit.years!=null&&!+$('fYears').value)$('fYears').value=hit.years});el.appendChild(b)}
+function loadForecast(d){
+  if(d.mode==='dist'&&Array.isArray(d.comps)&&d.comps.length){const cs=d.comps.slice(0,8).map(c=>({lo:+c.lo,mid:+c.mid,hi:+c.hi,w:clamp(+c.w||50,1,100)})).filter(c=>c.lo<c.mid&&c.mid<c.hi&&c.lo>NOW);if(cs.length){S.comps=cs;S.distTouched=true;$('modal').hidden=true;setMode('dist');return true}}
+  if(Array.isArray(d.points)){const ps=d.points.slice(0,12).map(q=>({p:+q.p,year:+q.year})).filter(q=>q.p>0&&q.p<100&&q.year>NOW+.05);if(ps.length>=2){S.points=ps;$('modal').hidden=true;setMode('points');return true}}
+  return false}
+
+/* ---------- submit ---------- */
+let busy=false;
+function updateSubmit(){const b=$('submitBtn');b.textContent=busy?'Saving…':S.saved?'Update my forecast':'Submit forecast';
+  b.disabled=busy||!apiSet||!(lastModel&&lastModel.ok)||(S.mode==='dist'&&!S.distTouched)}
+function say(t,err){const s=$('status');s.textContent=t;s.className='note'+(err?' err':'')}
+$('form').addEventListener('submit',async e=>{e.preventDefault();if(busy||!apiSet||!lastModel||!lastModel.ok)return;
+  const name=$('fName').value.trim();if(!name){say('Add your name.',true);$('fName').focus();return}
+  const row={at:new Date().toISOString(),name,org:canonOrg($('fOrg').value),years:clamp(Math.round(+$('fYears').value||0),0,70),definition:'98% of current (2026) remote jobs',mode:S.mode,
+    points:S.mode==='points'?S.points.filter(q=>Number.isFinite(q.year)&&q.year>NOW&&q.p>0&&q.p<100).map(q=>({p:q.p,year:q.year})):[],
+    comps:S.mode==='dist'?S.comps.map(c=>({lo:+c.lo.toFixed(2),mid:+c.mid.toFixed(2),hi:+c.hi.toFixed(2),w:c.w})):[],
+    y0:GY0,cdf:gridOf(lastModel.cdf),hp:$('fSite').value};
+  busy=true;updateSubmit();
+  try{ // text/plain keeps this a "simple" request, which Apps Script needs (it cannot answer a CORS preflight)
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(row)}),j=await res.json();
+    if(!j.ok)throw new Error(j.error||'refused');
+    S.saved=true;say('Saved.');persist();const r=cleanRow('n'+R.rows.length,rowDoc(row));if(r){R.rows.push(r);renderResults()}nameHint()}
+  catch(err){say('Could not save: '+(err&&err.message==='Failed to fetch'?'no connection to the sheet':String(err&&err.message||'unknown error'))+'. Try again.',true)}
+  busy=false;updateSubmit()});
+$('fName').addEventListener('input',nameHint);
+['fName','fOrg','fYears'].forEach(id=>$(id).addEventListener('input',()=>{try{localStorage.setItem('tai-who',JSON.stringify({n:$('fName').value,o:$('fOrg').value,y:$('fYears').value}))}catch(e){}}));
+try{const w=JSON.parse(localStorage.getItem('tai-who')||'null');if(w){$('fName').value=w.n||'';$('fOrg').value=w.o||'';$('fYears').value=w.y||0}}catch(e){}
+
+async function boot(){
+  if(!apiSet){R.msg='Backend URL not set';say('The sheet backend is not connected yet (see README).',true);updateSubmit();renderResults();return}
+  try{const j=await (await fetch(API)).json();if(!j.ok)throw 0;R.rows=j.rows.map((r,i)=>cleanRow('r'+i,rowDoc(r))).filter(Boolean);R.loaded=true}
+  catch(e){R.msg='Forecasts could not be loaded'}
+  nameHint();renderResults();updateSubmit();
+}
+
+/* ---------- routing + start ---------- */
+function route(){const r=location.hash==='#results';$('viewR').hidden=!r;$('viewF').hidden=r;$('tabR').toggleAttribute('aria-current',r);$('tabF').toggleAttribute('aria-current',!r);if(r)$('tabR').setAttribute('aria-current','page');else $('tabF').setAttribute('aria-current','page');r?renderResults():renderEditor()}
+window.addEventListener('hashchange',route);
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(route,80)});
+function start(data){if(data&&data.S)Object.assign(S,data.S);
+  if(S.mode)setMode(S.mode);else{S.mode=null;setMode('points');S.mode='points';if(location.hash!=='#results')openModal()}
+  route();boot()}
+start({});
+</script>
+</body>
+</html>
