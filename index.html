@@ -420,7 +420,7 @@ wireSeg($('eHor'),v=>{S.horizon=+v;renderEditor();persist()});
 
 /* ---------- shared data ---------- */
 // Backend: a Google Apps Script web app attached to the sheet (see README). Paste its /exec URL here.
-const API='PASTE_YOUR_APPS_SCRIPT_URL_HERE';
+const API='https://script.google.com/macros/s/AKfycbyV0mRLGyPILYKRb-5oBJGIL7vfykWB6Q1Xp07SroSMF4AtOOraAxEmPRR-ykr6phAE/exec';
 const apiSet=/^https:\/\/script\.google\.com\//.test(API);
 const myKey=()=>nameKey($('fName').value);
 const parse=v=>{if(Array.isArray(v))return v;try{const j=JSON.parse(v);return Array.isArray(j)?j:null}catch(e){return null}};
