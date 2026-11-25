@@ -104,8 +104,6 @@ details.i[open]{display:block}
 .read .v{padding:4px 8px;font-variant-numeric:tabular-nums}
 #readout{grid-template-columns:repeat(4,minmax(0,1fr))}
 .read[hidden]{display:none}
-.read.meta{grid-template-columns:minmax(0,1fr);max-width:80ch}
-.read.meta div{background:var(--box)}.read.meta .k{background:var(--boxhead)}
 
 /* form */
 .form{display:flex;gap:8px 14px;align-items:end;flex-wrap:wrap}
@@ -113,14 +111,18 @@ details.i[open]{display:block}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);padding:8px 18px;font-size:17px;font-weight:bold;cursor:pointer}
 .btn.primary:disabled{background:var(--head);color:var(--muted);border-color:var(--line);cursor:default}
 
-/* forecast view: the numbered steps at the left, the chart at the right; one column on a narrow screen */
-.edit{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:14px 28px;align-items:start}
-@media (max-width:900px){.edit{grid-template-columns:minmax(0,1fr)}}
-.edit>.card:first-child{gap:14px}
+/* panels, as on a Metaculus question page: "Make a prediction", then "Resolution criteria" with its fine print */
+.panel{background:var(--box);border:1px solid var(--line);padding:12px 14px;max-width:1000px}
+div.panel{display:flex;flex-direction:column;gap:12px}
+.panel .ph,details.panel>summary{font-size:20px;font-weight:bold;margin:0}
+details.panel>summary{cursor:pointer}
+details.panel[open]>summary{margin-bottom:8px}
+.pbody{display:flex;flex-direction:column;gap:8px;max-width:80ch}
+.pbody .sub{color:var(--muted);margin-top:6px}
 .step{display:flex;flex-direction:column;gap:8px}
 .step+.step{border-top:1px solid var(--line);padding-top:12px}
-.step h2{font-size:20px;margin:0}
-.step.done h2::after{content:" ✓"}
+.step h3{font-size:17px;margin:0}
+.step.done h3::after{content:" ✓"}
 .step .row{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap}
 /* walkthrough: a callout at the part it explains, and an outline around that part */
 .hrow{display:flex;gap:2px 14px;align-items:baseline;flex-wrap:wrap}
@@ -128,6 +130,7 @@ details.i[open]{display:block}
 .tour{border:1px solid var(--ink);background:var(--box);padding:8px 10px;font-size:15px;max-width:60ch}
 .tour .btn{margin-left:6px}
 .tourOn{outline:2px solid var(--accent);outline-offset:6px}
+.panel .tourOn{outline-offset:3px}
 
 /* results */
 .legend{display:flex;gap:4px 16px;flex-wrap:wrap;font-size:14px}
@@ -146,19 +149,20 @@ details.i[open]{display:block}
 #cCard ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:4px}
 .btn.link{text-align:left}
 #cCard .btn.link{vertical-align:top}
-#cCard .read .v{white-space:pre-line}
 .cnav{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 /* probability bar: click or drag anywhere on it */
 .pbar{display:flex;flex-direction:column;gap:2px;max-width:640px}
 .pread{display:flex;gap:4px 10px;align-items:baseline;flex-wrap:wrap}
 .pread input{width:96px;font-size:22px;font-weight:bold}
-.ptrack{cursor:pointer;margin:0 10px}
-.ptrack::before{top:10px;height:10px;background:var(--head);border:1px solid var(--line)}
-.ptrack .range{top:10px;height:10px;left:0}
-.ptrack .handle.unset{border-style:dashed;opacity:.6}
-.mk{position:absolute;top:4px;height:22px;width:0;border-left:2px solid var(--ink);pointer-events:none}
+.ptrack{cursor:pointer;margin:26px 34px 0}
+.ptrack .range{left:0}
+.ptrack .handle{top:1px;width:auto;min-width:52px;height:28px;margin-left:0;transform:translateX(-50%);border-radius:14px;padding:0 8px;font-size:14px;font-weight:bold;color:var(--ink)}
+.ptrack .handle.unset{border-style:dashed;color:var(--muted)}
+.mk{position:absolute;top:5px;height:20px;width:0;border-left:2px solid var(--ink);pointer-events:none}
 .mk.now{border-left-style:dotted;border-left-color:var(--muted)}
-.pticks{position:relative;height:18px;margin:0 10px;font-size:12px;color:var(--muted)}
+.mkl{position:absolute;bottom:100%;transform:translateX(-50%);background:var(--boxhead);padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap;pointer-events:none}
+.mkl.r{transform:translateX(-88%)}.mkl.l{transform:translateX(-12%)}
+.pticks{position:relative;height:18px;margin:0 34px;font-size:12px;color:var(--muted)}
 .pticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 .tblw{overflow-x:auto;margin-top:8px}
 table{border-collapse:collapse;font-size:15px}
@@ -185,10 +189,7 @@ td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
   <nav class="tabs" aria-label="Views"><a href="#forecast" id="tabF">Your forecast</a><a href="#china" id="tabC">China questions</a><a href="#results" id="tabR">Everyone's forecasts <span class="n" id="nCount"></span></a></nav>
   <header class="top">
     <div class="hrow"><h1 id="pageH">When will transformative AI arrive?</h1><button class="btn link help" id="tourBtn" type="button">Show the walkthrough</button></div>
-    <div class="read meta" id="pageDef">
-      <div><span class="k">Definition</span><span class="v">TAI = AI capable of performing 98% of current (2026) remote jobs.</span></div>
-      <div><span class="k">Fine print</span><span class="v">The AI must be capable of doing these jobs; it does not need to be diffused through the economy. The 98% counts the remote jobs that exist in 2026, not kinds of remote job that are invented later.</span></div>
-    </div>
+    <p class="def" id="pageSub">TAI = AI capable of performing 98% of current (2026) remote jobs.</p>
   </header>
 
   <section id="viewC" hidden>
@@ -206,50 +207,58 @@ td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
   </section>
 
   <section id="viewF">
-    <div class="edit">
-      <div class="card">
-        <div class="step" id="st1">
-          <h2>1. Enter your forecast</h2>
-          <p id="st1Hint"></p>
-          <div class="row"><span>Input: <span class="modeLabel" id="modeLabel"></span></span><button class="btn link" id="switchMode" type="button">change</button><details class="i" id="eInfo"><summary aria-label="How this works">ⓘ</summary><div id="eInfoT"></div></details></div>
-          <div id="distPanel" hidden>
-            <button class="btn" id="addComp" type="button">+ Add component</button>
-          </div>
-          <div id="pointsPanel" hidden style="display:flex;flex-direction:column;gap:10px">
-            <div id="pointRows"></div>
-            <div><button class="btn" id="addPoint" type="button">+ Add point</button></div>
-          </div>
-          <p class="note" id="fitNote"></p>
-        </div>
-        <div class="step" id="st2">
-          <h2>2. Submit</h2>
-          <form class="form" id="form">
-            <label>Name<input type="text" id="fName" maxlength="80" required autocomplete="name"></label>
-            <label>Organization (optional)<input type="text" id="fOrg" maxlength="80" list="orgList" autocomplete="organization"><datalist id="orgList"></datalist></label>
-            <label>Years of relevant experience<input type="number" id="fYears" min="0" max="70" step="1" value="0"></label>
-            <input type="text" id="fSite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px"><button class="btn primary" id="submitBtn" type="submit">Submit forecast</button>
-          </form>
-          <p class="note" id="subWhy"></p>
-          <p class="note" id="nameHint" hidden></p>
-          <p class="note" id="status">Visible to everyone who can open this page.</p>
-        </div>
-        <div class="step" id="st3">
-          <h2>3. Compare</h2>
-          <p><a href="#results">Everyone's forecasts</a> shows the pooled forecast with your curve on it.</p>
+    <div class="card">
+      <div class="bar">
+        <div class="right">
+          <div class="seg" id="eView" role="group" aria-label="Curve type"><button type="button" data-v="cdf">Cumulative</button><button type="button" data-v="pdf">Density</button></div>
+          <span>Show until</span>
+          <div class="seg" id="eHor" role="group" aria-label="Chart horizon"><button type="button" data-v="2040">2040</button><button type="button" data-v="2060">2060</button><button type="button" data-v="2100">2100</button></div>
         </div>
       </div>
-      <div class="card">
-        <div class="bar">
-          <div class="right">
-            <div class="seg" id="eView" role="group" aria-label="Curve type"><button type="button" data-v="cdf">Cumulative</button><button type="button" data-v="pdf">Density</button></div>
-            <span>Show until</span>
-            <div class="seg" id="eHor" role="group" aria-label="Chart horizon"><button type="button" data-v="2040">2040</button><button type="button" data-v="2060">2060</button><button type="button" data-v="2100">2100</button></div>
-          </div>
+      <div class="chart" id="eChart"><div class="plot"></div><div class="guide"></div><div class="tip"></div></div>
+      <div id="sliders"></div>
+    </div>
+    <div class="panel">
+      <h2 class="ph">Make a prediction</h2>
+      <div class="step" id="st1">
+        <h3>1. Enter your forecast</h3>
+        <p id="st1Hint"></p>
+        <div class="row"><span>Input: <span class="modeLabel" id="modeLabel"></span></span><button class="btn link" id="switchMode" type="button">change</button><details class="i" id="eInfo"><summary aria-label="How this works">ⓘ</summary><div id="eInfoT"></div></details></div>
+        <div id="distPanel" hidden>
+          <button class="btn" id="addComp" type="button">+ Add component</button>
         </div>
-        <div class="chart" id="eChart"><div class="plot"></div><div class="guide"></div><div class="tip"></div></div>
-        <div id="sliders"></div>
-        <div class="read" id="readout"></div>
+        <div id="pointsPanel" hidden style="display:flex;flex-direction:column;gap:10px">
+          <div id="pointRows"></div>
+          <div><button class="btn" id="addPoint" type="button">+ Add point</button></div>
+        </div>
+        <p class="note" id="fitNote"></p>
       </div>
+      <div class="step" id="st2">
+        <h3>2. Submit</h3>
+        <form class="form" id="form">
+          <label>Name<input type="text" id="fName" maxlength="80" required autocomplete="name"></label>
+          <label>Organization (optional)<input type="text" id="fOrg" maxlength="80" list="orgList" autocomplete="organization"><datalist id="orgList"></datalist></label>
+          <label>Years of relevant experience<input type="number" id="fYears" min="0" max="70" step="1" value="0"></label>
+          <input type="text" id="fSite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px"><button class="btn primary" id="submitBtn" type="submit">Submit forecast</button>
+        </form>
+        <p class="note" id="subWhy"></p>
+        <p class="note" id="nameHint" hidden></p>
+        <p class="note" id="status">Visible to everyone who can open this page.</p>
+      </div>
+      <div class="step" id="st3">
+        <h3>3. Compare</h3>
+        <p><a href="#results">Everyone's forecasts</a> shows the pooled forecast with your curve on it.</p>
+      </div>
+    </div>
+    <div class="read" id="readout"></div>
+    <div id="defF">
+      <details class="panel" id="pageDef" open><summary>Resolution criteria</summary>
+        <div class="pbody">
+          <p>TAI = AI capable of performing 98% of current (2026) remote jobs.</p>
+          <p class="sub">Fine print</p>
+          <p>The AI must be capable of doing these jobs; it does not need to be diffused through the economy. The 98% counts the remote jobs that exist in 2026, not kinds of remote job that are invented later.</p>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -269,6 +278,7 @@ td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
       <div class="chart" id="rChart"><div class="plot"></div><div class="guide"></div><div class="tip"></div></div>
       <p class="note" id="rNote"></p><details class="i"><summary aria-label="How the aggregate is computed">ⓘ</summary><div id="rInfoT"></div></details>
     </div>
+    <div id="defR"></div>
     <div class="card">
       <details id="orgs"><summary>Organizations</summary>
         <div class="tblw"><table><thead><tr><th>Show</th><th>Organization</th><th class="num">Forecasters</th><th class="num">Median</th></tr></thead><tbody id="oBody"></tbody></table></div>
@@ -373,7 +383,7 @@ const pct=v=>v==null?'–':v<.0005?'<0.1%':v<.1?(v*100).toFixed(1)+'%':Math.roun
 function interp(pts,x){if(!pts.length||x<pts[0][0]||x>pts[pts.length-1][0])return null;let lo=0,hi=pts.length-1;while(hi-lo>1){const m=(lo+hi)>>1;pts[m][0]<=x?lo=m:hi=m}const a=pts[lo],b=pts[hi];return b[0]===a[0]?a[1]:a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0])}
 function niceStep(max){const r=max/4,e=Math.pow(10,Math.floor(Math.log10(r))),f=r/e;return (f<1.5?1:f<3.5?2:f<7.5?5:10)*e}
 function drawChart(host,c){
-  const W=Math.max(280,host.clientWidth),H=W<520?250:340,pw=W-MG.l-MG.r,ph=H-MG.t-MG.b;
+  const W=Math.max(280,host.clientWidth),H=W<520?250:c.h||340,pw=W-MG.l-MG.r,ph=H-MG.t-MG.b;
   const X=x=>MG.l+(x-c.xmin)/(c.xmax-c.xmin)*pw,Yp=y=>MG.t+(1-y/c.ymax)*ph;
   const span=c.xmax-c.xmin,xs=span<=16?2:span<=40?5:10,id=host.id+'clip';
   let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${c.aria}"><defs><clipPath id="${id}"><rect x="${MG.l}" y="${MG.t-4}" width="${pw}" height="${ph+4}"/></clipPath></defs>`;
@@ -431,7 +441,7 @@ function renderEditor(){
     series.push({pts:main,color:'var(--accent)',width:2.5,fill:true,name:S.view==='cdf'?'TAI by then':'per year'});
   }
   if(S.mode==='points'&&S.view==='cdf')S.points.forEach((q,i)=>{if(Number.isFinite(q.year)&&q.year>NOW+.05&&q.p>0&&q.p<100)dots.push({i,x:q.year,y:q.p/100})});
-  drawChart(host,{xmin,xmax,ymax,yticks,yfmt,series,dots,aria:'Your forecast curve',empty:m.ok?'':(m.hint||''),
+  drawChart(host,{h:240,xmin,xmax,ymax,yticks,yfmt,series,dots,aria:'Your forecast curve',empty:m.ok?'':(m.hint||''),
     snap:x=>S.view==='cdf'?Math.round(x):Math.floor(x)+.5,head:x=>S.view==='cdf'?'before '+x:'during '+Math.floor(x),vfmt:pct,
     onDrag(i,x,y){const q=S.points[i];q.year=clamp(Math.round(x),GY0,S.horizon);q.p=clamp(Math.round(y*100),1,99);syncPointInputs();renderEditor()}});
   const note=$('fitNote');note.className='note'+(m.err?' err':'');note.textContent=m.err||(S.mode==='dist'&&!S.distTouched?'Move a handle to make it yours.':'');$('eInfoT').textContent=m.info||(S.mode==='points'?'Enter at least two points. "Before 2030" means before 1 January 2030.':'');$('eInfo').hidden=!$('eInfoT').textContent;
@@ -681,10 +691,11 @@ function buildBar(q,cw){
   sc.ticks.forEach(t=>{const s=el('span',null,t+'%');s.style.left=clamp(sc.pos(t),0,1)*100+'%';tk.appendChild(s)});
   // The median of the other forecasts shows only after you give your own number, so that it cannot anchor you.
   const paint=()=>{const v=C.a[q.id],set=v!=null,p=clamp(sc.pos(set?v:sc.mid),0,1)*100,c=cw[q.id];
-    h.style.left=p+'%';h.classList.toggle('unset',!set);rg.style.width=set?p+'%':'0';h.setAttribute('aria-valuenow',set?v:sc.mid);h.setAttribute('aria-valuetext',set?fv(q,v):'not set');
+    h.style.left=p+'%';h.classList.toggle('unset',!set);h.textContent=set?fv(q,v):'?';rg.style.width=set?p+'%':'0';h.setAttribute('aria-valuenow',set?v:sc.mid);h.setAttribute('aria-valuetext',set?fv(q,v):'not set');
     if(document.activeElement!==inp)inp.value=set?v:'';
-    info.textContent=set?(c.n?'Median of '+c.n+' forecast'+(c.n>1?'s':'')+': '+fv(q,c.med):''):'Click or drag the bar, or type a number.';
-    tr.querySelectorAll('.mk.crowd').forEach(m=>m.remove());if(set&&c.n)mark(c.med,'crowd','Median forecast: '+fv(q,c.med))};
+    info.textContent=set?(c.n?c.n+' forecaster'+(c.n>1?'s':''):''):'Click or drag the line, or type a number.';
+    tr.querySelectorAll('.mk.crowd,.mkl').forEach(m=>m.remove());
+    if(set&&c.n){const cp=clamp(sc.pos(c.med),0,1),l=el('div','mkl'+(cp>.8?' r':cp<.2?' l':''),'Community: '+fv(q,c.med));l.style.left=cp*100+'%';mark(c.med,'crowd','Community median: '+fv(q,c.med));tr.appendChild(l)}};
   const put=v=>{if(v==null||!isFinite(v))delete C.a[q.id];else C.a[q.id]=clamp(v,sc.lo,sc.hi);C.saved=false;paint();navC();updateSubmitC()};
   const at=x=>{const r=tr.getBoundingClientRect();return sc.val(clamp((x-r.left)/r.width,0,1))};
   tr.addEventListener('pointerdown',e=>{e.preventDefault();h.focus();put(at(e.clientX));
@@ -704,15 +715,16 @@ function navC(){const n=Q.length,s=C.step,st=$('cSteps');st.textContent='';
   $('cPrev').hidden=s===0;$('cNext').hidden=s===n+1;$('cNext').textContent=s===0?'Start →':C.a[Q[s-1]?.id]==null?'Skip →':s===n?'Summary →':'Next →'}
 function renderC(dir){const n=Q.length,s=C.step,card=$('cCard'),cw=crowd();card.textContent='';navC();$('cSubmit').hidden=s!==n+1;
   if(dir){card.className='card';void card.offsetWidth;card.className='card '+(dir>0?'inR':'inL')}
-  const box=(k,v)=>{const r=el('div','read'),d=el('div');d.append(el('span','k',k),el('span','v',v));r.appendChild(d);return r};
   if(s===0){
     card.append(el('p',null,Q.length+' short questions about China and AI. Each one asks for one number: a probability, or for the first question a percentage.'),
       el('p',null,'All questions are optional. Your answers are saved in this browser as you go. On the last page you can submit them under your name and compare them with the median forecast.'),
       el('p','note','To move between questions, use Previous and Next, the left and right arrow keys, or a swipe.'));
     const ol=el('ol');Q.forEach((q,i)=>{const li=el('li'),b=el('button','btn link',q.title);b.type='button';b.addEventListener('click',()=>go(i+1));li.appendChild(b);ol.appendChild(li)});card.appendChild(ol);
   }else if(s<=n){const q=Q[s-1];
-    card.appendChild(el('h2',null,'Question '+s+': '+q.title));if(q.nowText)card.appendChild(box('Today',q.nowText));
-    card.append(buildBar(q,cw),box('Resolution criteria (draft)',q.res),box('Context / fine print',q.bg));
+    const pn=el('div','panel'),d=el('details','panel'),pb=el('div','pbody');
+    pn.appendChild(el('h3','ph','Make a prediction'));if(q.nowText)pn.appendChild(el('p',null,'Today: '+q.nowText));pn.appendChild(buildBar(q,cw));
+    d.open=true;d.appendChild(el('summary',null,'Resolution criteria (draft)'));pb.append(el('p',null,q.res),el('p','sub','Fine print'),el('p',null,q.bg));d.appendChild(pb);
+    card.append(el('h2',null,'Question '+s+': '+q.title),pn,d);
   }else{card.appendChild(el('h2',null,'Summary'));const w=el('div','tblw');chinaTable(w);card.appendChild(w)}
   updateSubmitC()}
 function go(d){const s=clamp(C.step+d,0,Q.length+1);if(s===C.step)return;C.step=s;persistC();renderC(d);window.scrollTo(0,0)}
@@ -752,7 +764,7 @@ async function bootC(){
 // Runs one time for a new user, after the choice of input mode. The small button next to the question runs it again.
 const TOUR=[
   ['st1',()=>'Start here. '+(S.mode==='dist'?'Drag the handles under the chart to set the quartiles of your forecast.':'In each row, type the year before which you give TAI that chance. You can change the percentages and add rows.')+' Select "change" for a different type of input.'],
-  ['eChart',()=>'This is your curve. It changes as you '+(S.mode==='dist'?'move the handles.':'type. You can also drag the points on it.')+' The table below it shows the years and probabilities that follow from your curve.'],
+  ['eChart',()=>'This is your curve. It changes as you '+(S.mode==='dist'?'move the handles.':'type. You can also drag the points on it.')],
   ['st2',()=>'Add your name, then select "Submit forecast". You can submit again later: the latest forecast under your name counts.'],
   ['st3',()=>'After you submit, compare your curve with the pooled forecast of all forecasters.'],
 ];
@@ -768,7 +780,7 @@ $('tourBtn').addEventListener('click',()=>{if(!$('modal').hidden)closeModal();to
 /* ---------- routing + start ---------- */
 function route(){const v=location.hash==='#results'?'R':location.hash==='#china'?'C':'F';
   ['F','C','R'].forEach(k=>{$('view'+k).hidden=k!==v;k===v?$('tab'+k).setAttribute('aria-current','page'):$('tab'+k).removeAttribute('aria-current')});
-  $('pageH').textContent=v==='C'?'China and AI: what do you expect?':'When will transformative AI arrive?';$('pageDef').hidden=v==='C';$('tourBtn').hidden=v!=='F';if(v!=='F')tourOff();
+  $('pageH').textContent=v==='C'?'China and AI: what do you expect?':'When will transformative AI arrive?';$('pageSub').hidden=v==='C';if(v!=='C')$('def'+v).appendChild($('pageDef'));$('tourBtn').hidden=v!=='F';if(v!=='F')tourOff();
   v==='R'?renderResults():v==='C'?renderC():renderEditor()}
 window.addEventListener('hashchange',route);
 // The questionnaire lays itself out in percent, so it does not need a redraw on resize (a redraw would also drop the focus when a phone keyboard opens).
