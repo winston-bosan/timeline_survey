@@ -112,7 +112,32 @@ details.i[open]{display:block}
 .legend span{display:inline-flex;gap:6px;align-items:center;overflow-wrap:anywhere}
 .legend .ln{width:18px;height:0;border-top:3px solid;flex:none}
 .legend .ln.thin{border-top-width:2px}.legend .ln.dash{border-top-style:dashed}
-#indiv summary,#orgs summary{cursor:pointer;color:var(--link);text-decoration:underline}
+#indiv summary,#orgs summary,#chinaR summary{cursor:pointer;color:var(--link);text-decoration:underline}
+
+/* questionnaire: one question per step */
+.card[hidden]{display:none}
+#cCard{max-width:80ch;gap:12px;touch-action:pan-y}
+#cCard.inR{animation:inR .16s ease-out}#cCard.inL{animation:inL .16s ease-out}
+@keyframes inR{from{opacity:0;transform:translateX(28px)}}
+@keyframes inL{from{opacity:0;transform:translateX(-28px)}}
+@media (prefers-reduced-motion:reduce){#cCard{animation:none!important}}
+#cCard ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:4px}
+#cCard .btn.link{text-align:left;vertical-align:top}
+.qt{font-weight:bold;font-size:20px;text-wrap:balance}
+#cCard .read .v{white-space:pre-line}
+.cnav{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+/* probability bar: click or drag anywhere on it */
+.pbar{display:flex;flex-direction:column;gap:2px;max-width:640px}
+.pread{display:flex;gap:4px 10px;align-items:baseline;flex-wrap:wrap}
+.pread input{width:96px;font-size:22px;font-weight:bold}
+.ptrack{cursor:pointer;margin:0 10px}
+.ptrack::before{top:10px;height:10px;background:var(--head);border:1px solid var(--line)}
+.ptrack .range{top:10px;height:10px;left:0}
+.ptrack .handle.unset{border-style:dashed;opacity:.6}
+.mk{position:absolute;top:4px;height:22px;width:0;border-left:2px solid var(--ink);pointer-events:none}
+.mk.now{border-left-style:dotted;border-left-color:var(--muted)}
+.pticks{position:relative;height:18px;margin:0 10px;font-size:12px;color:var(--muted)}
+.pticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
 .tblw{overflow-x:auto;margin-top:8px}
 table{border-collapse:collapse;font-size:15px}
 th,td{text-align:left;padding:4px 10px;border:1px solid var(--line);white-space:nowrap}
@@ -135,11 +160,25 @@ td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
 </head>
 <body>
 <div class="wrap">
-  <nav class="tabs" aria-label="Views"><a href="#forecast" id="tabF">Your forecast</a><a href="#results" id="tabR">Everyone's forecasts <span class="n" id="nCount"></span></a></nav>
+  <nav class="tabs" aria-label="Views"><a href="#forecast" id="tabF">Your forecast</a><a href="#china" id="tabC">China questions</a><a href="#results" id="tabR">Everyone's forecasts <span class="n" id="nCount"></span></a></nav>
   <header class="top">
-    <h1>When will transformative AI arrive?</h1>
-    <p class="def">TAI = AI capable of performing 98% of current (2026) remote jobs.</p>
+    <h1 id="pageH">When will transformative AI arrive?</h1>
+    <p class="def" id="pageDef">TAI = AI capable of performing 98% of current (2026) remote jobs.</p>
   </header>
+
+  <section id="viewC" hidden>
+    <div class="seg" id="cSteps" role="group" aria-label="Questions"></div>
+    <div class="card" id="cCard"></div>
+    <div class="card" id="cSubmit" hidden>
+      <form class="form" id="cForm">
+        <label>Name<input type="text" id="cName" maxlength="80" required autocomplete="name"></label>
+        <label>Organization (optional)<input type="text" id="cOrg" maxlength="80" list="orgList" autocomplete="organization"></label>
+        <button class="btn primary" id="cBtn" type="submit">Submit answers</button>
+      </form>
+      <p class="note" id="cStatus"></p>
+    </div>
+    <div class="cnav"><button class="btn" id="cPrev" type="button">← Previous</button><button class="btn" id="cNext" type="button">Next →</button></div>
+  </section>
 
   <section id="viewF">
     <div class="card">
@@ -202,6 +241,9 @@ td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
       <details id="indiv"><summary>Individual forecasts</summary>
         <div class="tblw"><table><thead><tr><th>Show</th><th>Name</th><th>Organization</th><th class="num">Exp. (yrs)</th><th class="num">TAI def.</th><th class="num">Updated</th><th class="num">10%</th><th class="num">Median</th><th class="num">90%</th></tr></thead><tbody id="rBody"></tbody></table></div>
       </details>
+    </div>
+    <div class="card">
+      <details id="chinaR"><summary>China questions</summary><div class="tblw" id="rChina"></div></details>
     </div>
   </section>
 </div>
@@ -494,6 +536,7 @@ function renderResults(){
     const td=(v,c)=>{const e=document.createElement('td');if(c)e.className=c;e.textContent=v;tr.appendChild(e);return e};
     const c0=document.createElement('td'),cb=document.createElement('input');cb.type='checkbox';cb.id='ov-'+r.id;cb.checked=!!R.overlay[r.id];cb.setAttribute('aria-label','Show '+r.name+' on the chart');cb.addEventListener('change',()=>{R.overlay[r.id]=cb.checked;renderResults()});c0.appendChild(cb);tr.appendChild(c0);
     td(r.name+(myKey()&&nameKey(r.name)===myKey()?' (you)':''),'nm');td(r.org||'–','nm');td(r.years==null?'–':String(r.years),'num');td(r.old?'99%':'98%','num');td(r.at?r.at.slice(0,10):'–','num');td(gridQuantile(r.cdf.length?average([r],'arith'):[],.1),'num');td(gridQuantile(average([r],'arith'),.5),'num');td(gridQuantile(average([r],'arith'),.9),'num');body.appendChild(tr)});
+  chinaTable($('rChina'));
   const dl=$('orgList');dl.textContent='';[...new Set(ORGS.concat(rows.map(r=>r.org).filter(Boolean)))].sort((a,b)=>a.localeCompare(b)).forEach(o=>{const op=document.createElement('option');op.value=o;dl.appendChild(op)});
 }
 wireSeg($('rView'),v=>{R.view=v;renderResults()});wireSeg($('rAvg'),v=>{R.avg=v;renderResults()});wireSeg($('rHor'),v=>{R.horizon=+v;renderResults()});
@@ -538,13 +581,143 @@ async function boot(){
   nameHint();renderResults();updateSubmit();
 }
 
+/* ---------- China questions ---------- */
+// Flow of data: Q (the one list of questions) -> one card per step -> C.a {question id: value}, kept in localStorage
+// -> on submit, one row in the "answers" tab of the sheet (one column per question id; the script adds a column for a new id)
+// -> read back as C.rows -> the latest answer per name and question -> the median per question.
+// To add a question, add an entry here. type 'prob' is a probability in percent; type 'num' is a number on a log scale from min to max.
+// The resolution texts are drafts. An assumption that the original question left open is marked ASSUMED.
+const Q=[
+  {id:'energy',type:'num',min:.1,max:50,ticks:[.1,.3,1,3,10,30],now:.3,short:'Energy: share used for LLMs',
+    title:"What percentage of China's energy output will be used for LLM-related tasks (training, inference and so on) in 2030?", // ASSUMED: the year 2030
+    bg:"Large language models use electricity in data centres, for training and for inference. This question asks how large that use becomes relative to all the energy China produces.",
+    nowText:'About 0.3% (rough estimate)',
+    res:"Resolves to the best available estimate of the share of China's annual electricity generation that LLM training and inference use in the calendar year 2030."},
+  {id:'nationalize',type:'prob',short:'Labs: partial nationalization',
+    title:'Will at least one Chinese AI lab be partially nationalized in 2027?',
+    bg:'"Partially nationalized" means that the state takes part of the ownership or the control of a lab, without taking all of it.',
+    res:'Resolves yes if, between 1 January and 31 December 2027, a Chinese state body takes an ownership stake or formal control rights (for example a golden share or a board seat) in at least one Chinese lab that trains frontier AI models, as shown by credible reporting.'},
+  {id:'compute50',type:'prob',short:'Compute: one entity above 50%',
+    title:"In 2027, will one entity in China, the CCP included, have more than 50% of China's AI compute?",
+    bg:'The entity can be a company, a state body or the Party itself. Compute that an entity owns and compute that it directly controls both count.',
+    res:"Resolves yes if a credible estimate shows that, at any time in 2027, one entity owns or directly controls more than 50% of the AI compute located in China."},
+  {id:'xirsi',type:'prob',short:'Xi: recursive self-improvement',
+    title:'Will Xi Jinping say the words "recursive self-improvement" in the first half of 2027?',
+    bg:'Chinese terms that count: 自我递归提升 or 自进化 (the exact list of terms is not final).',
+    res:'Resolves yes if, between 1 January and 30 June 2027, Xi Jinping uses one of these terms about AI in a public speech, a published article or an official readout.'},
+  {id:'xivisit',type:'prob',short:'Xi: visit to America',
+    title:'Will Xi Jinping visit the United States again in 2027?',
+    bg:'A visit for any purpose counts, for example a state visit or a summit that the United States hosts.',
+    res:'Resolves yes if Xi Jinping is physically in the United States at any time between 1 January and 31 December 2027.'},
+  {id:'pause',type:'prob',short:'Pause: does China follow?',
+    title:'If the United States pauses frontier AI development unilaterally, will China also pause within 12 months?', // ASSUMED: 12 months
+    bg:'This is a conditional question. Give your probability for a world in which the United States pauses first, without an agreement with China.',
+    res:'Resolves yes if China stops the training of more capable frontier models, by law or by state order, within 12 months after a unilateral United States pause starts. The question is void if the United States does not pause.'},
+  {id:'incident',type:'prob',short:'Incident reporting with the US',
+    title:'Will China sit down with the United States to develop an AI incident reporting system before 2030?',
+    bg:'An incident reporting system is a shared channel through which each side tells the other about serious AI incidents.',
+    res:'Resolves yes if, before 1 January 2030, either government confirms official talks between the two with the stated aim to build a shared AI incident reporting system.'},
+];
+const C={step:0,a:{},rows:[],ok:false,loaded:false,saved:false,busy:false};
+try{const d=JSON.parse(localStorage.getItem('tai-china')||'null');if(d){Object.assign(C.a,d.a);C.step=clamp(d.step|0,0,Q.length+1);C.saved=!!d.saved}}catch(e){}
+const persistC=()=>{try{localStorage.setItem('tai-china',JSON.stringify({a:C.a,step:C.step,saved:C.saved}))}catch(e){}};
+const el=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e};
+const fv=(q,v)=>v==null?'–':+(+v).toPrecision(3)+'%';
+// Position on the bar (0..1) <-> value. Probabilities are linear; other numbers are on a log scale.
+function scaleOf(q){return q.type==='num'
+  ?{lo:q.min,hi:q.max,mid:Math.sqrt(q.min*q.max),pos:v=>Math.log(v/q.min)/Math.log(q.max/q.min),val:t=>+(q.min*Math.pow(q.max/q.min,t)).toPrecision(2),ticks:q.ticks}
+  :{lo:.1,hi:99.9,mid:50,pos:v=>v/100,val:t=>Math.round(t*100),ticks:[0,25,50,75,100]}}
+function crowd(){ // -> {question id: {n, med}}; a later answer under the same name replaces an earlier one, per question
+  const by={};C.rows.slice().sort((a,b)=>String(a.at)<String(b.at)?-1:1).forEach(r=>{const k=nameKey(r.name);if(!k)return;const p=by[k]=by[k]||{};Q.forEach(q=>{const v=r[q.id];if(v!==''&&v!=null&&isFinite(+v))p[q.id]=+v})});
+  const out={};Q.forEach(q=>{const v=Object.values(by).map(p=>p[q.id]).filter(x=>x!=null).sort((a,b)=>a-b),n=v.length;out[q.id]={n,med:n?(v[(n-1)>>1]+v[n>>1])/2:null}});return out}
+function buildBar(q,cw){
+  const sc=scaleOf(q),w=el('div','pbar'),rd=el('div','pread'),inp=el('input'),info=el('span','note'),tr=el('div','track ptrack'),rg=el('div','range'),h=el('button','handle'),tk=el('div','pticks');
+  inp.type='number';inp.id='cv-'+q.id;inp.min=sc.lo;inp.max=sc.hi;inp.step='any';inp.placeholder='?';inp.setAttribute('aria-label','Your forecast in percent');
+  h.type='button';h.setAttribute('role','slider');h.setAttribute('aria-label','Your forecast');h.setAttribute('aria-valuemin',sc.lo);h.setAttribute('aria-valuemax',sc.hi);
+  const mark=(v,cls,title)=>{const m=el('div','mk '+cls);m.style.left=clamp(sc.pos(v),0,1)*100+'%';m.title=title;tr.appendChild(m)};
+  rd.append(inp,el('span',null,'%'),info);tr.append(rg,h);w.append(rd,tr,tk);
+  if(q.now!=null)mark(q.now,'now','Today: about '+fv(q,q.now));
+  sc.ticks.forEach(t=>{const s=el('span',null,t+'%');s.style.left=clamp(sc.pos(t),0,1)*100+'%';tk.appendChild(s)});
+  // The median of the other forecasts shows only after you give your own number, so that it cannot anchor you.
+  const paint=()=>{const v=C.a[q.id],set=v!=null,p=clamp(sc.pos(set?v:sc.mid),0,1)*100,c=cw[q.id];
+    h.style.left=p+'%';h.classList.toggle('unset',!set);rg.style.width=set?p+'%':'0';h.setAttribute('aria-valuenow',set?v:sc.mid);h.setAttribute('aria-valuetext',set?fv(q,v):'not set');
+    if(document.activeElement!==inp)inp.value=set?v:'';
+    info.textContent=set?(c.n?'Median of '+c.n+' forecast'+(c.n>1?'s':'')+': '+fv(q,c.med):''):'Click or drag the bar, or type a number.';
+    tr.querySelectorAll('.mk.crowd').forEach(m=>m.remove());if(set&&c.n)mark(c.med,'crowd','Median forecast: '+fv(q,c.med))};
+  const put=v=>{if(v==null||!isFinite(v))delete C.a[q.id];else C.a[q.id]=clamp(v,sc.lo,sc.hi);C.saved=false;paint();navC();updateSubmitC()};
+  const at=x=>{const r=tr.getBoundingClientRect();return sc.val(clamp((x-r.left)/r.width,0,1))};
+  tr.addEventListener('pointerdown',e=>{e.preventDefault();h.focus();put(at(e.clientX));
+    const mv=ev=>put(at(ev.clientX)),up=()=>{window.removeEventListener('pointermove',mv);window.removeEventListener('pointerup',up);persistC()};
+    window.addEventListener('pointermove',mv);window.addEventListener('pointerup',up)});
+  h.addEventListener('keydown',e=>{const d=e.key==='ArrowLeft'||e.key==='ArrowDown'?-1:e.key==='ArrowRight'||e.key==='ArrowUp'?1:0;if(!d)return;e.preventDefault();e.stopPropagation();
+    put(sc.val(clamp(sc.pos(C.a[q.id]??sc.mid)+d*(e.shiftKey?.1:.01),0,1)));persistC()});
+  inp.addEventListener('input',()=>{put(inp.value===''?null:+inp.value);persistC()});inp.addEventListener('blur',paint);
+  paint();return w}
+function chinaTable(host){const cw=crowd(),t=el('table'),hr=el('tr'),tb=el('tbody');host.textContent='';
+  [['#','num'],['Question (select to open)',''],['My forecast','num'],['Median forecast','num'],['Forecasters','num']].forEach(([k,c])=>hr.appendChild(el('th',c,k)));
+  Q.forEach((q,i)=>{const tr=el('tr'),nm=el('td','nm'),b=el('button','btn link',q.short);b.type='button';b.title=q.title;b.addEventListener('click',()=>{C.step=i+1;persistC();location.hash==='#china'?renderC(1):location.hash='#china'});
+    nm.appendChild(b);if(q.nowText)nm.appendChild(el('div','note','today: '+q.nowText));tr.append(el('td','num',String(i+1)),nm,el('td','num',fv(q,C.a[q.id])),el('td','num',fv(q,cw[q.id].med)),el('td','num',String(cw[q.id].n)));tb.appendChild(tr)});
+  const th=el('thead');th.appendChild(hr);t.append(th,tb);host.appendChild(t)}
+function navC(){const n=Q.length,s=C.step,st=$('cSteps');st.textContent='';
+  ['Overview',...Q.map((q,i)=>(i+1)+(C.a[q.id]!=null?'✓':'')),'Summary'].forEach((t,i)=>{const b=el('button',null,t);b.type='button';b.dataset.v=i;b.setAttribute('aria-pressed',String(i===s));st.appendChild(b)});
+  $('cPrev').hidden=s===0;$('cNext').hidden=s===n+1;$('cNext').textContent=s===0?'Start →':C.a[Q[s-1]?.id]==null?'Skip →':s===n?'Summary →':'Next →'}
+function renderC(dir){const n=Q.length,s=C.step,card=$('cCard'),cw=crowd();card.textContent='';navC();$('cSubmit').hidden=s!==n+1;
+  if(dir){card.className='card';void card.offsetWidth;card.className='card '+(dir>0?'inR':'inL')}
+  const box=(k,v)=>{const r=el('div','read'),d=el('div');d.append(el('span','k',k),el('span','v',v));r.appendChild(d);return r};
+  if(s===0){
+    card.append(el('p',null,Q.length+' short questions about China and AI. Each one asks for one number: a probability, or for the first question a percentage.'),
+      el('p',null,'All questions are optional. Your answers are saved in this browser as you go. On the last page you can submit them under your name and compare them with the median forecast.'),
+      el('p','note','To move between questions, use Previous and Next, the left and right arrow keys, or a swipe.'));
+    const ol=el('ol');Q.forEach((q,i)=>{const li=el('li'),b=el('button','btn link',q.title);b.type='button';b.addEventListener('click',()=>go(i+1));li.appendChild(b);ol.appendChild(li)});card.appendChild(ol);
+  }else if(s<=n){const q=Q[s-1];
+    card.append(el('h2',null,q.short),el('p',null,q.bg));if(q.nowText)card.appendChild(box('Today',q.nowText));
+    card.append(el('p','qt','Question '+s+': '+q.title),buildBar(q,cw),box('Resolution criteria (draft)',q.res));
+  }else{card.appendChild(el('h2',null,'Summary'));const w=el('div','tblw');chinaTable(w);card.appendChild(w)}
+  updateSubmitC()}
+function go(d){const s=clamp(C.step+d,0,Q.length+1);if(s===C.step)return;C.step=s;persistC();renderC(d);window.scrollTo(0,0)}
+$('cPrev').addEventListener('click',()=>go(-1));$('cNext').addEventListener('click',()=>go(1));
+$('cSteps').addEventListener('click',e=>{const b=e.target.closest('button');if(b)go(+b.dataset.v-C.step)});
+document.addEventListener('keydown',e=>{if($('viewC').hidden||e.metaKey||e.ctrlKey||e.altKey||!(e.target instanceof Element))return;
+  if(e.key==='Enter'&&e.target.closest('.pread')){e.preventDefault();go(1);return}
+  if(e.target.closest('input,textarea,select,[role=slider]'))return;
+  if(e.key==='ArrowRight')go(1);else if(e.key==='ArrowLeft')go(-1)});
+// Swipe on touch screens: left = next, right = previous. A swipe that starts on the bar or on a control moves that control instead.
+let swipe=null;
+$('cCard').addEventListener('pointerdown',e=>{swipe=e.pointerType!=='mouse'&&!e.target.closest('.pbar,button,a,input,summary')?[e.clientX,e.clientY]:null});
+$('cCard').addEventListener('pointerup',e=>{if(!swipe)return;const dx=e.clientX-swipe[0],dy=e.clientY-swipe[1];swipe=null;if(Math.abs(dx)>60&&Math.abs(dx)>2*Math.abs(dy))go(dx<0?1:-1)});
+$('cCard').addEventListener('pointercancel',()=>{swipe=null});
+// The name and organization are the same as on the TAI form: the two forms mirror each other.
+[['cName','fName'],['cOrg','fOrg']].forEach(([a,b])=>{$(a).value=$(b).value;$(a).addEventListener('input',()=>{$(b).value=$(a).value;$(b).dispatchEvent(new Event('input'))});$(b).addEventListener('input',()=>{$(a).value=$(b).value})});
+function sayC(t,err){const s=$('cStatus');s.textContent=t;s.className='note'+(err?' err':'')}
+function updateSubmitC(){const any=Q.some(q=>C.a[q.id]!=null),b=$('cBtn'),off=!apiSet||(C.loaded&&!C.ok);
+  b.textContent=C.busy?'Saving…':C.saved?'Saved':'Submit answers';b.disabled=C.busy||!C.ok||!any||C.saved;
+  if(!C.busy)sayC(off?'The sheet backend has no "answers" tab yet (see README). Your answers stay in this browser.':!any?'No answers yet.':C.saved?'Saved. Change an answer to submit again.':'Visible to everyone who can open this page.',off)}
+$('cForm').addEventListener('submit',async e=>{e.preventDefault();if(C.busy||!C.ok)return;
+  const name=$('cName').value.trim();if(!name){sayC('Add your name.',true);$('cName').focus();return}
+  const row={tab:'answers',at:new Date().toISOString(),name,org:canonOrg($('cOrg').value),years:clamp(Math.round(+$('fYears').value||0),0,70),hp:$('fSite').value};
+  Q.forEach(q=>{if(C.a[q.id]!=null)row[q.id]=C.a[q.id]});
+  C.busy=true;updateSubmitC();let fail='';
+  try{const res=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(row)}),j=await res.json();
+    if(!j.ok)throw new Error(j.error||'refused');C.saved=true;C.rows.push(row);persistC()}
+  catch(err){fail='Could not save: '+(err&&err.message==='Failed to fetch'?'no connection to the sheet':String(err&&err.message||'unknown error'))+'. Try again.'}
+  C.busy=false;renderC();if(fail)sayC(fail,true)});
+// An older backend ignores ?tab and returns the TAI rows with no "tab" field. Then C.ok stays false and submit stays off,
+// because a post to that backend would put the answers into the TAI tab.
+async function bootC(){
+  if(apiSet)try{const j=await (await fetch(API+'?tab=answers')).json();C.ok=!!(j.ok&&j.tab==='answers'&&Array.isArray(j.rows));if(C.ok)C.rows=j.rows}catch(e){}
+  C.loaded=true;if(!$('viewC').hidden){const a=document.activeElement;if(!(a instanceof Element&&a.closest('#cCard')))renderC();else updateSubmitC()}else if(!$('viewR').hidden)renderResults()}
+
 /* ---------- routing + start ---------- */
-function route(){const r=location.hash==='#results';$('viewR').hidden=!r;$('viewF').hidden=r;$('tabR').toggleAttribute('aria-current',r);$('tabF').toggleAttribute('aria-current',!r);if(r)$('tabR').setAttribute('aria-current','page');else $('tabF').setAttribute('aria-current','page');r?renderResults():renderEditor()}
+function route(){const v=location.hash==='#results'?'R':location.hash==='#china'?'C':'F';
+  ['F','C','R'].forEach(k=>{$('view'+k).hidden=k!==v;k===v?$('tab'+k).setAttribute('aria-current','page'):$('tab'+k).removeAttribute('aria-current')});
+  $('pageH').textContent=v==='C'?'China and AI: what do you expect?':'When will transformative AI arrive?';$('pageDef').hidden=v==='C';
+  v==='R'?renderResults():v==='C'?renderC():renderEditor()}
 window.addEventListener('hashchange',route);
-let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(route,80)});
+// The questionnaire lays itself out in percent, so it does not need a redraw on resize (a redraw would also drop the focus when a phone keyboard opens).
+let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if($('viewC').hidden)route()},80)});
 function start(data){if(data&&data.S)Object.assign(S,data.S);
-  if(S.mode)setMode(S.mode);else{S.mode=null;setMode('points');S.mode='points';if(location.hash!=='#results')openModal()}
-  route();boot()}
+  if(S.mode)setMode(S.mode);else{S.mode=null;setMode('points');S.mode='points';if(location.hash!=='#results'&&location.hash!=='#china')openModal()}
+  route();boot();bootC()}
 start({});
 </script>
 </body>
