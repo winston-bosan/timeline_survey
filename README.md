@@ -17,7 +17,7 @@ The sheet has two tabs. In both, one row is one submission and rows are never ed
 
 | Tab | What | Columns |
 | --- | --- | --- |
-| first tab | TAI curves | `at name org years definition mode points comps y0 cdf` (fixed) |
+| the tab with a `cdf` column | TAI curves | `at name org years definition mode points comps y0 cdf` (fixed) |
 | `answers` | China questions | `at name org years` + one column for each question id |
 
 The script makes the `answers` tab on the first request. It adds a column when a new question id arrives.

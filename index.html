@@ -123,7 +123,6 @@ details.i[open]{display:block}
 @media (prefers-reduced-motion:reduce){#cCard{animation:none!important}}
 #cCard ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:4px}
 #cCard .btn.link{text-align:left;vertical-align:top}
-.qt{font-weight:bold;font-size:20px;text-wrap:balance}
 #cCard .read .v{white-space:pre-line}
 .cnav{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 /* probability bar: click or drag anywhere on it */
@@ -588,32 +587,32 @@ async function boot(){
 // To add a question, add an entry here. type 'prob' is a probability in percent; type 'num' is a number on a log scale from min to max.
 // The resolution texts are drafts. An assumption that the original question left open is marked ASSUMED.
 const Q=[
-  {id:'energy',type:'num',min:.1,max:50,ticks:[.1,.3,1,3,10,30],now:.3,short:'Energy: share used for LLMs',
+  {id:'energy',type:'num',min:.1,max:50,ticks:[.1,.3,1,3,10,30],now:.3,
     title:"What percentage of China's energy output will be used for LLM-related tasks (training, inference and so on) in 2030?", // ASSUMED: the year 2030
     bg:"Large language models use electricity in data centres, for training and for inference. This question asks how large that use becomes relative to all the energy China produces.",
     nowText:'About 0.3% (rough estimate)',
     res:"Resolves to the best available estimate of the share of China's annual electricity generation that LLM training and inference use in the calendar year 2030."},
-  {id:'nationalize',type:'prob',short:'Labs: partial nationalization',
+  {id:'nationalize',type:'prob',
     title:'Will at least one Chinese AI lab be partially nationalized in 2027?',
     bg:'"Partially nationalized" means that the state takes part of the ownership or the control of a lab, without taking all of it.',
     res:'Resolves yes if, between 1 January and 31 December 2027, a Chinese state body takes an ownership stake or formal control rights (for example a golden share or a board seat) in at least one Chinese lab that trains frontier AI models, as shown by credible reporting.'},
-  {id:'compute50',type:'prob',short:'Compute: one entity above 50%',
+  {id:'compute50',type:'prob',
     title:"In 2027, will one entity in China, the CCP included, have more than 50% of China's AI compute?",
     bg:'The entity can be a company, a state body or the Party itself. Compute that an entity owns and compute that it directly controls both count.',
     res:"Resolves yes if a credible estimate shows that, at any time in 2027, one entity owns or directly controls more than 50% of the AI compute located in China."},
-  {id:'xirsi',type:'prob',short:'Xi: recursive self-improvement',
+  {id:'xirsi',type:'prob',
     title:'Will Xi Jinping say the words "recursive self-improvement" in the first half of 2027?',
     bg:'Chinese terms that count: 自我递归提升 or 自进化 (the exact list of terms is not final).',
     res:'Resolves yes if, between 1 January and 30 June 2027, Xi Jinping uses one of these terms about AI in a public speech, a published article or an official readout.'},
-  {id:'xivisit',type:'prob',short:'Xi: visit to America',
+  {id:'xivisit',type:'prob',
     title:'Will Xi Jinping visit the United States again in 2027?',
     bg:'A visit for any purpose counts, for example a state visit or a summit that the United States hosts.',
     res:'Resolves yes if Xi Jinping is physically in the United States at any time between 1 January and 31 December 2027.'},
-  {id:'pause',type:'prob',short:'Pause: does China follow?',
+  {id:'pause',type:'prob',
     title:'If the United States pauses frontier AI development unilaterally, will China also pause within 12 months?', // ASSUMED: 12 months
     bg:'This is a conditional question. Give your probability for a world in which the United States pauses first, without an agreement with China.',
     res:'Resolves yes if China stops the training of more capable frontier models, by law or by state order, within 12 months after a unilateral United States pause starts. The question is void if the United States does not pause.'},
-  {id:'incident',type:'prob',short:'Incident reporting with the US',
+  {id:'incident',type:'prob',
     title:'Will China sit down with the United States to develop an AI incident reporting system before 2030?',
     bg:'An incident reporting system is a shared channel through which each side tells the other about serious AI incidents.',
     res:'Resolves yes if, before 1 January 2030, either government confirms official talks between the two with the stated aim to build a shared AI incident reporting system.'},
@@ -655,7 +654,7 @@ function buildBar(q,cw){
   paint();return w}
 function chinaTable(host){const cw=crowd(),t=el('table'),hr=el('tr'),tb=el('tbody');host.textContent='';
   [['#','num'],['Question (select to open)',''],['My forecast','num'],['Median forecast','num'],['Forecasters','num']].forEach(([k,c])=>hr.appendChild(el('th',c,k)));
-  Q.forEach((q,i)=>{const tr=el('tr'),nm=el('td','nm'),b=el('button','btn link',q.short);b.type='button';b.title=q.title;b.addEventListener('click',()=>{C.step=i+1;persistC();location.hash==='#china'?renderC(1):location.hash='#china'});
+  Q.forEach((q,i)=>{const tr=el('tr'),nm=el('td','nm'),b=el('button','btn link',q.title);b.type='button';b.addEventListener('click',()=>{C.step=i+1;persistC();location.hash==='#china'?renderC(1):location.hash='#china'});
     nm.appendChild(b);if(q.nowText)nm.appendChild(el('div','note','today: '+q.nowText));tr.append(el('td','num',String(i+1)),nm,el('td','num',fv(q,C.a[q.id])),el('td','num',fv(q,cw[q.id].med)),el('td','num',String(cw[q.id].n)));tb.appendChild(tr)});
   const th=el('thead');th.appendChild(hr);t.append(th,tb);host.appendChild(t)}
 function navC(){const n=Q.length,s=C.step,st=$('cSteps');st.textContent='';
@@ -670,8 +669,8 @@ function renderC(dir){const n=Q.length,s=C.step,card=$('cCard'),cw=crowd();card.
       el('p','note','To move between questions, use Previous and Next, the left and right arrow keys, or a swipe.'));
     const ol=el('ol');Q.forEach((q,i)=>{const li=el('li'),b=el('button','btn link',q.title);b.type='button';b.addEventListener('click',()=>go(i+1));li.appendChild(b);ol.appendChild(li)});card.appendChild(ol);
   }else if(s<=n){const q=Q[s-1];
-    card.append(el('h2',null,q.short),el('p',null,q.bg));if(q.nowText)card.appendChild(box('Today',q.nowText));
-    card.append(el('p','qt','Question '+s+': '+q.title),buildBar(q,cw),box('Resolution criteria (draft)',q.res));
+    card.appendChild(el('h2',null,'Question '+s+': '+q.title));if(q.nowText)card.appendChild(box('Today',q.nowText));
+    card.append(buildBar(q,cw),box('Resolution criteria (draft)',q.res),box('Context / fine print',q.bg));
   }else{card.appendChild(el('h2',null,'Summary'));const w=el('div','tblw');chinaTable(w);card.appendChild(w)}
   updateSubmitC()}
 function go(d){const s=clamp(C.step+d,0,Q.length+1);if(s===C.step)return;C.step=s;persistC();renderC(d);window.scrollTo(0,0)}

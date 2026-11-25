@@ -1,7 +1,7 @@
 // Backend for index.html: a Google Apps Script web app that is attached to the sheet.
 //
 // Two tabs, and one rule for both: one row = one submission, and rows are never edited.
-//   forecasts : the TAI curves. This is the FIRST tab of the spreadsheet. Its header row is fixed.
+//   forecasts : the TAI curves. The script finds this tab by its header row (it has the columns "name" and "cdf").
 //   answers   : the China questions. The script makes this tab, and it adds a column when a new question id arrives.
 //
 // GET  .../exec               -> {ok, tab:'forecasts', rows:[{header: value}]}
@@ -14,9 +14,16 @@ const MAX_COLS = 60;
 
 function sheetFor(tab) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  if (tab !== ANSWERS) return ss.getSheets()[0];
-  // insertSheet(name, index) puts the new tab last, so the forecasts tab stays first.
-  return ss.getSheetByName(ANSWERS) || ss.insertSheet(ANSWERS, ss.getSheets().length);
+  if (tab === ANSWERS) return ss.getSheetByName(ANSWERS) || ss.insertSheet(ANSWERS, ss.getSheets().length);
+  // The forecasts tab is the one whose header row has the columns "name" and "cdf". Its name and position do not matter.
+  const hit = ss.getSheets().filter(function (sh) {
+    const n = sh.getLastColumn();
+    if (!n) return false;
+    const head = sh.getRange(1, 1, 1, n).getValues()[0].map(String);
+    return head.indexOf('name') >= 0 && head.indexOf('cdf') >= 0;
+  })[0];
+  if (!hit) throw new Error('no forecasts tab: no tab has a header row with "name" and "cdf"');
+  return hit;
 }
 
 function out(o) {
