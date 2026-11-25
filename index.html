@@ -112,7 +112,7 @@ details.i[open]{display:block}
 .legend span{display:inline-flex;gap:6px;align-items:center;overflow-wrap:anywhere}
 .legend .ln{width:18px;height:0;border-top:3px solid;flex:none}
 .legend .ln.thin{border-top-width:2px}.legend .ln.dash{border-top-style:dashed}
-#indiv summary{cursor:pointer;color:var(--link);text-decoration:underline}
+#indiv summary,#orgs summary{cursor:pointer;color:var(--link);text-decoration:underline}
 .tblw{overflow-x:auto;margin-top:8px}
 table{border-collapse:collapse;font-size:15px}
 th,td{text-align:left;padding:4px 10px;border:1px solid var(--line);white-space:nowrap}
@@ -194,6 +194,11 @@ td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
       <p class="note" id="rNote"></p><details class="i"><summary aria-label="How the aggregate is computed">ⓘ</summary><div id="rInfoT"></div></details>
     </div>
     <div class="card">
+      <details id="orgs"><summary>Organizations</summary>
+        <div class="tblw"><table><thead><tr><th>Show</th><th>Organization</th><th class="num">Forecasters</th><th class="num">Median</th></tr></thead><tbody id="oBody"></tbody></table></div>
+      </details>
+    </div>
+    <div class="card">
       <details id="indiv"><summary>Individual forecasts</summary>
         <div class="tblw"><table><thead><tr><th>Show</th><th>Name</th><th>Organization</th><th class="num">Exp. (yrs)</th><th class="num">TAI def.</th><th class="num">Updated</th><th class="num">10%</th><th class="num">Median</th><th class="num">90%</th></tr></thead><tbody id="rBody"></tbody></table></div>
       </details>
@@ -261,7 +266,7 @@ function quantileOf(cdf,q){let lo=NOW,hi=NOW+3000;if(cdf(hi)<q)return Infinity;f
 
 /* ---------- editor state ---------- */
 const S={mode:null,view:'cdf',horizon:2060,points:[{p:10,year:null},{p:50,year:null}],comps:[],distTouched:false,saved:false};
-const R={view:'cdf',avg:'geo',horizon:2060,rows:[],overlay:{},loaded:false,incOld:true};
+const R={view:'cdf',avg:'geo',horizon:2060,rows:[],overlay:{},orgShow:{},loaded:false,incOld:true};
 function defaultComp(){const a=Math.max(NOW+1,Y0+1),span=S.horizon-a;return {lo:a+span*.25,mid:a+span*.5,hi:a+span*.75,w:50}}
 try{const d=JSON.parse(localStorage.getItem('tai-draft')||'null');if(d&&d.S)Object.assign(S,d.S)}catch(e){}
 function persist(){try{localStorage.setItem('tai-draft',JSON.stringify({S}))}catch(e){}}
@@ -452,11 +457,13 @@ function renderResults(){
   const rows=people(),host=$('rChart'),series=[],leg=$('rLegend');leg.textContent='';const nOld=rows.filter(r=>r.old).length,allOld=R.rows.some(r=>r.old);$('oldWrap').hidden=!allOld;
   const addLeg=(name,color,cls)=>{const s=document.createElement('span'),l=document.createElement('span');l.className='ln '+(cls||'');l.style.borderTopColor=color;s.appendChild(l);s.appendChild(document.createTextNode(name));leg.appendChild(s)};
   $('nCount').textContent=R.loaded?'('+rows.length+')':'';
-  let agg=null;
+  let agg=null,orgs=[];
   if(rows.length){
     const groups={};rows.forEach(r=>{if(!r.org)return;const k=r.org.toLowerCase();(groups[k]=groups[k]||{name:r.org,rows:[]}).rows.push(r)});
-    const top=Object.values(groups).sort((a,b)=>b.rows.length-a.rows.length||a.name.localeCompare(b.name)).slice(0,4);
-    top.forEach((g,i)=>{const col=`var(--o${i+1})`,nm=g.name+' (n='+g.rows.length+')';series.push({pts:gridPts(average(g.rows,R.avg),R.view),color:col,width:1.75,name:nm});addLeg(nm,col,'thin')});
+    orgs=Object.entries(groups).map(([k,g])=>({k,name:g.name,rows:g.rows})).sort((a,b)=>b.rows.length-a.rows.length||a.name.localeCompare(b.name));
+    // The four largest organizations are drawn unless the viewer ticks or unticks them in the Organizations list.
+    orgs.forEach((g,i)=>{g.on=R.orgShow[g.k]??i<4});
+    orgs.filter(g=>g.on).forEach((g,i)=>{const col=`var(--o${i%4+1})`,nm=g.name+' (n='+g.rows.length+')';g.avg=average(g.rows,R.avg);series.push({pts:gridPts(g.avg,R.view),color:col,width:1.75,name:nm});addLeg(nm,col,'thin')});
     rows.forEach(r=>{if(R.overlay[r.id]){series.push({pts:gridPts(average([r],'arith'),R.view),color:'var(--muted)',width:1.25,name:r.name});}});
     if(Object.keys(R.overlay).some(k=>R.overlay[k]))addLeg('Selected individuals','var(--muted)','thin');
     agg=average(rows,R.avg);const nm='All forecasters (n='+rows.length+')';
@@ -471,11 +478,16 @@ function renderResults(){
     empty:series.length?'':(R.loaded?'No forecasts yet':R.msg||'Loading forecasts…'),
     snap:x=>R.view==='cdf'?Math.max(GY0,Math.round(x)):Math.max(GY0,Math.floor(x))+.5,head:x=>R.view==='cdf'?'before '+x:'during '+Math.floor(x),vfmt:pct});
   $('rNote').textContent=rows.length?'':(R.loaded?'':R.msg||'');
-  $('rInfoT').textContent=(R.avg==='geo'?'The black line pools every individual forecast with the geometric mean of odds.':'The black line is the arithmetic mean of every individual forecast.')+' Thin lines are the four organizations with the most forecasters, averaged the same way. One forecast per name: the latest.'+(nOld?' '+nOld+' forecasts were made under the earlier 99% definition.':'');
+  $('rInfoT').textContent=(R.avg==='geo'?'The black line pools every individual forecast with the geometric mean of odds.':'The black line is the arithmetic mean of every individual forecast.')+' Thin lines are organizations, averaged the same way; the four largest show by default. Change which ones under Organizations. One forecast per name: the latest.'+(nOld?' '+nOld+' forecasts were made under the earlier 99% definition.':'');
   const t=$('rTiles');t.textContent='';
   const cell=(k,v,cls)=>{const d=document.createElement('div');if(cls)d.className=cls;const a=document.createElement('span'),b=document.createElement('span');a.className='k';b.className='v';a.textContent=k;b.textContent=v;d.appendChild(a);d.appendChild(b);t.appendChild(d)};
   cell('Forecasters',R.loaded?String(rows.length):'–');cell('Aggregate median',agg?gridQuantile(agg,.5):'–','med');
   [2030,2040,2060].filter(y=>y>GY0).forEach(y=>cell('Before '+y,agg?pct(agg[y-GY0]):'–'));
+  const ob=$('oBody');ob.textContent='';$('orgs').querySelector('summary').textContent='Organizations ('+orgs.length+')';
+  orgs.forEach(g=>{const tr=document.createElement('tr'),c0=document.createElement('td'),cb=document.createElement('input');cb.type='checkbox';cb.id='og-'+g.k.replace(/[^a-z0-9]+/g,'-');cb.checked=g.on;cb.setAttribute('aria-label','Show '+g.name+' on the chart');
+    cb.addEventListener('change',()=>{R.orgShow[g.k]=cb.checked;renderResults()});c0.appendChild(cb);tr.appendChild(c0);
+    const td=(v,c)=>{const e=document.createElement('td');if(c)e.className=c;e.textContent=v;tr.appendChild(e)};
+    td(g.name,'nm');td(String(g.rows.length),'num');td(gridQuantile(g.avg||average(g.rows,R.avg),.5),'num');ob.appendChild(tr)});
   const body=$('rBody');body.textContent='';
   $('indiv').querySelector('summary').textContent='Individual forecasts ('+rows.length+')';
   rows.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(r=>{const tr=document.createElement('tr');
