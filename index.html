@@ -9,7 +9,7 @@
    blue = you, ink = everyone, four more hues (fixed order, reference palette) for organizations a viewer ticks. */
 :root{
   --bg:#f5f5f3; --surface:#ffffff; --sunk:#f0f0ee; --ink:#191919; --muted:#5f5f5f; --faint:#8c8c8c; --line:#e3e3e0; --line2:#c9c9c5;
-  --link:#1b64be; --accent:#257de0; --accent-soft:#e6f0fc; --btn:#2370cd; --btn-ink:#ffffff; --warn:#b3261e;
+  --crit:#ececea; --link:#1b64be; --accent:#257de0; --accent-soft:#e6f0fc; --btn:#2370cd; --btn-ink:#ffffff; --warn:#b3261e;
   --o1:#f47230; --o2:#00b894; --o3:#f2a600; --o4:#ee7fac;
   --shadow:0 1px 2px rgba(0,0,0,.05);
   --font:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -18,14 +18,14 @@
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#111111; --surface:#191919; --sunk:#232323; --ink:#efefef; --muted:#a3a3a3; --faint:#7d7d7d; --line:#2e2e2e; --line2:#474747;
-    --link:#6aabf1; --accent:#338ced; --accent-soft:#16283d; --btn:#338ced; --btn-ink:#0c0c0c; --warn:#ff8a80;
+    --crit:#202020; --link:#6aabf1; --accent:#338ced; --accent-soft:#16283d; --btn:#338ced; --btn-ink:#0c0c0c; --warn:#ff8a80;
     --o1:#e76624; --o2:#00a888; --o3:#d28e05; --o4:#e24d8b;
     --shadow:none; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
   --bg:#111111; --surface:#191919; --sunk:#232323; --ink:#efefef; --muted:#a3a3a3; --faint:#7d7d7d; --line:#2e2e2e; --line2:#474747;
-  --link:#6aabf1; --accent:#338ced; --accent-soft:#16283d; --btn:#338ced; --btn-ink:#0c0c0c; --warn:#ff8a80;
+  --crit:#202020; --link:#6aabf1; --accent:#338ced; --accent-soft:#16283d; --btn:#338ced; --btn-ink:#0c0c0c; --warn:#ff8a80;
   --o1:#e76624; --o2:#00a888; --o3:#d28e05; --o4:#e24d8b;
   --shadow:none; color-scheme:dark;
 }
@@ -73,6 +73,8 @@ details.panel>summary::-webkit-details-marker{display:none}
 details.panel>summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;flex:none}
 details.panel[open]>summary::before{transform:rotate(45deg)}
 details.panel[open]>summary{margin-bottom:12px}
+/* resolution criteria: a different gray and a left rule, so that the exact question stands out */
+#pageDef,.card details.panel{background:var(--crit);border-left:3px solid var(--faint)}
 .pbody{display:flex;flex-direction:column;gap:8px;max-width:72ch}
 .pbody .sub{font-size:13px;font-weight:600;color:var(--muted);margin-top:6px}
 
@@ -194,7 +196,7 @@ td .sw{margin-left:8px;vertical-align:middle}
 @media (prefers-reduced-motion:reduce){.card{animation:none!important}}
 .qt{font-size:clamp(21px,3vw,26px);line-height:1.2}
 .qlist{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px}
-.cnav{display:flex;gap:12px;align-items:center}
+.cnav{display:flex;gap:12px;align-items:center;position:sticky;bottom:0;z-index:5;background:var(--bg);padding:10px 0 12px;margin-bottom:-12px}
 #cNext{margin-left:auto}
 
 /* probability line: click or drag anywhere on it */
@@ -414,7 +416,7 @@ function niceStep(max){const r=max/4,e=Math.pow(10,Math.floor(Math.log10(r))),f=
 function drawChart(host,c){
   const W=Math.max(280,host.clientWidth),H=c.h?(W<520?Math.min(c.h,220):c.h):(W<520?250:340),mr=c.series.some(q=>q.label)?74:MG.r,pw=W-MG.l-mr,ph=H-MG.t-MG.b;
   const X=x=>MG.l+(x-c.xmin)/(c.xmax-c.xmin)*pw,Yp=y=>MG.t+(1-y/c.ymax)*ph;
-  const span=c.xmax-c.xmin,xs=[2,5,10,20,25,50].find(v=>pw*v/span>=44)||100,id=host.id+'clip';
+  const span=c.xmax-c.xmin,xs=[2,5,10,20,25,50].find(v=>pw*v/span>=56)||100,id=host.id+'clip';
   let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${c.aria}"><defs><clipPath id="${id}"><rect x="${MG.l}" y="${MG.t-4}" width="${pw}" height="${ph+4}"/></clipPath></defs>`;
   for(const t of c.yticks)s+=`<line class="grid" x1="${MG.l}" x2="${W-mr}" y1="${Yp(t)}" y2="${Yp(t)}"/><text class="tick" x="${MG.l-7}" y="${Yp(t)+4}" text-anchor="end">${c.yfmt(t)}</text>`;
   for(let t=Math.ceil(c.xmin/xs)*xs;t<=c.xmax;t+=xs)s+=`<line class="axis" x1="${X(t)}" x2="${X(t)}" y1="${MG.t+ph}" y2="${MG.t+ph+4}"/><text class="tick" x="${X(t)}" y="${H-7}" text-anchor="middle">${t}</text>`;
@@ -796,10 +798,10 @@ async function bootC(){
 // While step 2 is off screen (and the walkthrough is not running), a small bar at the bottom of the screen
 // shows the state of step 1 and scrolls to the form. So Submit is always one select away.
 let st2Seen=true;
-function dock(){const show=!st2Seen&&!$('viewF').hidden&&$('coach').hidden,ok=!!(lastModel&&lastModel.ok);
+function dock(){const show=!st2Seen&&!$('viewF').hidden&&$('coach').hidden,ok=!!(lastModel&&lastModel.ok)&&!(S.mode==='dist'&&!S.distTouched);
   $('dock').hidden=!show;document.body.classList.toggle('docked',show);if(!show)return;
   const md=ok?quantileOf(lastModel.cdf,.5):0;
-  $('dockT').textContent=!ok?'Step 1: enter two points.':S.saved?'Saved. Your median year: '+(md>=2300?'after 2300':Math.floor(md+1e-6)):'Your median year: '+(md>=2300?'after 2300':Math.floor(md+1e-6));
+  $('dockT').textContent=!ok?(S.mode==='dist'?'Step 1: move a handle.':'Step 1: enter two points.'):S.saved?'Saved. Your median year: '+(md>=2300?'after 2300':Math.floor(md+1e-6)):'Your median year: '+(md>=2300?'after 2300':Math.floor(md+1e-6));
   $('dockBtn').textContent=S.saved?'Update ↓':'Submit ↓'}
 if('IntersectionObserver' in window)new IntersectionObserver(es=>{st2Seen=es[es.length-1].isIntersecting;dock()}).observe($('st2'));
 $('dockBtn').addEventListener('click',()=>{$('st2').scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});$('fName').focus({preventScroll:true})});
