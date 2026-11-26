@@ -5,252 +5,289 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TAI Timeline Forecast</title>
 <style>
-/* Plain-HTML look: default sans, blue underlined links, bordered tables, no cards. The chart is the only designed thing. */
+/* One column, system font, white panels on a light gray page. Color only where it carries meaning:
+   blue = you, ink = everyone, four more hues (fixed order, reference palette) for organizations a viewer ticks. */
 :root{
-  --bg:#ffffff; --surface:#ffffff; --ink:#000000; --muted:#666666; --line:#aaaaaa; --head:#eeeeee; --box:#f4f4f4; --boxhead:#dcdcdc;
-  --link:#0645ad; --accent:#1f5fd0; --accent-ink:#ffffff;
-  --o1:#c4571b; --o2:#8b3fb0; --o3:#2e8b57; --o4:#8f7210; --warn:#b3261e;
-  --f-body:Helvetica,Arial,sans-serif;
+  --bg:#f5f5f3; --surface:#ffffff; --sunk:#f0f0ee; --ink:#191919; --muted:#5f5f5f; --faint:#8c8c8c; --line:#e3e3e0; --line2:#c9c9c5;
+  --link:#1b64be; --accent:#257de0; --accent-soft:#e6f0fc; --btn:#2370cd; --btn-ink:#ffffff; --warn:#b3261e;
+  --o1:#f47230; --o2:#00b894; --o3:#f2a600; --o4:#ee7fac;
+  --shadow:0 1px 2px rgba(0,0,0,.05);
+  --font:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
-    --bg:#111111; --surface:#111111; --ink:#e8e8e8; --muted:#999999; --line:#555555; --head:#222222; --box:#1c1c1c; --boxhead:#303030;
-    --link:#8ab4f8; --accent:#8ab4f8; --accent-ink:#111111;
-    --o1:#f0935a; --o2:#c98be6; --o3:#6fcf97; --o4:#d9b84a; --warn:#ff8a80;
-    color-scheme:dark;
+    --bg:#111111; --surface:#191919; --sunk:#232323; --ink:#efefef; --muted:#a3a3a3; --faint:#7d7d7d; --line:#2e2e2e; --line2:#474747;
+    --link:#6aabf1; --accent:#338ced; --accent-soft:#16283d; --btn:#338ced; --btn-ink:#0c0c0c; --warn:#ff8a80;
+    --o1:#e76624; --o2:#00a888; --o3:#d28e05; --o4:#e24d8b;
+    --shadow:none; color-scheme:dark;
   }
 }
 :root[data-theme="dark"]{
-  --bg:#111111; --surface:#111111; --ink:#e8e8e8; --muted:#999999; --line:#555555; --head:#222222; --box:#1c1c1c; --boxhead:#303030;
-  --link:#8ab4f8; --accent:#8ab4f8; --accent-ink:#111111;
-  --o1:#f0935a; --o2:#c98be6; --o3:#6fcf97; --o4:#d9b84a; --warn:#ff8a80;
-  color-scheme:dark;
+  --bg:#111111; --surface:#191919; --sunk:#232323; --ink:#efefef; --muted:#a3a3a3; --faint:#7d7d7d; --line:#2e2e2e; --line2:#474747;
+  --link:#6aabf1; --accent:#338ced; --accent-soft:#16283d; --btn:#338ced; --btn-ink:#0c0c0c; --warn:#ff8a80;
+  --o1:#e76624; --o2:#00a888; --o3:#d28e05; --o4:#e24d8b;
+  --shadow:none; color-scheme:dark;
 }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html,body{margin:0}
-body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.3}
-.wrap{max-width:1100px;padding:8px 16px 48px;display:flex;flex-direction:column;gap:14px}
-h1{font-size:32px;margin:6px 0 0;text-wrap:balance}
-h2{font-size:24px;margin:8px 0 0;text-wrap:balance}
-p{margin:0}
-a,.btn.link,.seg button,.go{color:var(--link);text-decoration:underline}
-.top{display:flex;flex-direction:column;gap:8px}
-.def{max-width:80ch}
-.tabs a:not(:last-child)::after,.seg button:not(:last-child)::after{content:",";color:var(--ink);display:inline-block;margin-right:.3em}
-.tabs a[aria-current="page"],.seg button[aria-pressed="true"]{color:var(--ink);font-weight:bold;text-decoration:none;cursor:default}
-section[hidden]{display:none}
-section{display:flex;flex-direction:column;gap:14px}
-.card{display:flex;flex-direction:column;gap:10px;min-width:0}
-.bar{display:flex;gap:6px 18px;align-items:center;flex-wrap:wrap;justify-content:space-between}
-.bar .left,.bar .right{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap}
-.modeLabel{font-weight:bold}
-.seg{display:inline}
-.seg button,.btn.link{background:none;border:0;padding:0;font:inherit;cursor:pointer}
-#oldWrap:not([hidden]){display:flex;gap:6px;align-items:center}
-button,input{font-family:inherit;font-size:inherit}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 var(--font);-webkit-text-size-adjust:100%}
+body.coaching{padding-bottom:150px}
+h1,h2,h3,p{margin:0}
+h1{font-size:clamp(26px,4.2vw,34px);line-height:1.15;letter-spacing:-.015em;text-wrap:balance}
+h2{font-size:20px;line-height:1.25;text-wrap:balance}
+h3{font-size:16px}
+a{color:var(--link)}
+button,input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-input[type=number]{font-variant-numeric:tabular-nums}
+input[type=number],td.num,.stats .v,.hero .v{font-variant-numeric:tabular-nums}
 
-/* (i) */
-details.i{display:inline-block;color:var(--muted);font-size:14px;max-width:80ch}
-details.i summary{list-style:none;cursor:pointer;display:inline-block;width:1.4em;text-align:center}
-details.i summary::-webkit-details-marker{display:none}
-details.i[open]{display:block}
+/* top bar */
+.top{background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+.tabs{max-width:880px;margin:0 auto;padding:0 16px;display:flex;gap:24px;overflow-x:auto;scrollbar-width:none}
+.tabs a{padding:13px 0 11px;border-bottom:2px solid transparent;color:var(--muted);text-decoration:none;white-space:nowrap;font-weight:500}
+.tabs a:hover{color:var(--ink)}
+.tabs a[aria-current="page"]{color:var(--ink);border-bottom-color:var(--ink)}
+.badge{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:var(--sunk);font-size:12px;line-height:18px;text-align:center;color:var(--muted)}
+.badge:empty{display:none}
 
-/* chart */
-.chart{position:relative;min-width:0;max-width:1000px}
-.chart svg{display:block;max-width:100%}
-.chart .grid{stroke:var(--line);stroke-width:1;opacity:.45}
-.chart .axis{stroke:var(--ink);stroke-width:1}
-.chart .tick,.chart .axl{fill:var(--muted);font:12px var(--f-body)}
-.chart .today{stroke:var(--muted);stroke-dasharray:2 3}
-.chart .emptyT{fill:var(--muted);font:15px var(--f-body)}
-.chart .dot{fill:var(--bg);stroke:var(--accent);stroke-width:2.5;cursor:grab;touch-action:none}
-.chart .dotHit{fill:transparent;cursor:grab;touch-action:none}
-.guide{position:absolute;top:0;width:1px;background:var(--muted);pointer-events:none;display:none}
-.tip{position:absolute;top:8px;pointer-events:none;display:none;background:var(--bg);color:var(--ink);border:1px solid var(--ink);padding:5px 8px;font-size:13px;max-width:280px;z-index:3}
-.tip .h{color:var(--muted)}
-.tip .r{display:flex;gap:10px;justify-content:space-between;align-items:center}
-.tip .r span:first-child{display:flex;gap:6px;align-items:center;overflow-wrap:anywhere}
-.tip .r b{font-variant-numeric:tabular-nums}
-.sw{display:inline-block;width:10px;height:10px;flex:none}
+.wrap{max-width:880px;margin:0 auto;padding:24px 16px 64px;display:flex;flex-direction:column;gap:16px}
+section{display:flex;flex-direction:column;gap:16px}
 
-/* sliders */
-#sliders{display:flex;flex-direction:column;gap:4px;max-width:1000px}
-.comp{display:flex;flex-direction:column;gap:2px}
-.track{position:relative;height:30px;touch-action:none}
-.track::before{content:"";position:absolute;left:0;right:0;top:14px;height:1px;background:var(--line)}
-.track .range{position:absolute;top:13px;height:3px;background:var(--accent)}
-.handle{position:absolute;top:5px;width:20px;height:20px;margin-left:-10px;border:2px solid var(--accent);background:var(--bg);border-radius:50%;cursor:grab;padding:0;touch-action:none}
-.handle.mid{border-radius:0;background:var(--accent)}
-.compMeta{display:flex;gap:4px 16px;align-items:center;flex-wrap:wrap;font-size:14px;color:var(--muted)}
-.compMeta .q{color:var(--ink);font-variant-numeric:tabular-nums}
-.compMeta input[type=range]{width:130px;vertical-align:middle}
-.x{border:0;background:none;color:var(--muted);font-size:18px;line-height:1;cursor:pointer;padding:0 6px}
+/* question header */
+.qhead{display:flex;gap:12px 32px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap}
+.qhead>div:first-child{display:flex;flex-direction:column;gap:8px;max-width:660px}
+.kick{font-size:12px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.def{color:var(--muted)}
+.hero{display:flex;flex-direction:column;align-items:flex-end;line-height:1.15}
+.hero .v{font-size:42px;font-weight:700;letter-spacing:-.02em}
+.hero .k{font-size:13px;color:var(--muted)}
 
-/* points */
-#pointRows{display:flex;flex-direction:column;gap:6px}
-.pt{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.pt input.p{width:64px}.pt input.y{width:104px}
+/* panels: "Make a prediction", then "Resolution criteria" with its fine print */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px;box-shadow:var(--shadow);min-width:0}
+div.panel{display:flex;flex-direction:column;gap:14px}
+.ph{font-size:18px}
+details.panel>summary{cursor:pointer;font-weight:600;list-style:none;display:flex;align-items:center;gap:10px}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary::before{content:"";width:7px;height:7px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(-45deg);transition:transform .15s;flex:none}
+details.panel[open]>summary::before{transform:rotate(45deg)}
+details.panel[open]>summary{margin-bottom:12px}
+.pbody{display:flex;flex-direction:column;gap:8px;max-width:72ch}
+.pbody .sub{font-size:13px;font-weight:600;color:var(--muted);margin-top:6px}
+
+/* the numbered steps inside "Make a prediction" */
+.step{display:flex;flex-direction:column;gap:12px}
+.step+.step{border-top:1px solid var(--line);padding-top:16px}
+.sh{display:flex;gap:8px 16px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.sh h3{display:flex;gap:10px;align-items:center}
+.n{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:var(--sunk);border:1px solid var(--line2);font-size:13px;font-weight:700}
+.done .n{background:var(--btn);border-color:var(--btn);color:var(--btn-ink)}
+.hint{color:var(--muted);font-size:15px}
+
+/* controls */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line2);background:var(--surface);border-radius:7px;padding:7px 14px;cursor:pointer;line-height:1.2}
+.btn:hover:not(:disabled){border-color:var(--ink)}
+.btn.sm{padding:4px 10px;font-size:14px}
+.btn.primary{background:var(--btn);border-color:var(--btn);color:var(--btn-ink);font-weight:600;padding:9px 20px}
+.btn.primary:hover:not(:disabled){filter:brightness(1.08);border-color:var(--btn)}
+.btn:disabled{background:var(--sunk);border-color:var(--line);color:var(--faint);cursor:default}
+.btn.link{display:inline;border:0;background:none;padding:0;border-radius:0;color:var(--link);text-decoration:underline;text-underline-offset:2px;text-align:left}
+.btn.help{color:var(--faint);font-size:13px;margin-left:4px}
+.seg{display:inline-flex;padding:2px;border-radius:8px;background:var(--sunk);border:1px solid var(--line)}
+.seg button{border:0;background:none;padding:4px 11px;border-radius:6px;font-size:14px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 0 0 1px var(--line2)}
+.bar{display:flex;gap:8px 12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.bar>div{display:flex;gap:8px 12px;align-items:center;flex-wrap:wrap}
+.lbl{font-size:13px;color:var(--muted)}
+label.lbl{display:inline-flex;gap:6px;align-items:center}
+input[type=text],input[type=number]{height:38px;padding:0 10px;border:1px solid var(--line2);border-radius:7px;background:var(--surface);min-width:0}
+input[type=text]:focus,input[type=number]:focus{border-color:var(--accent);outline:3px solid var(--accent-soft);outline-offset:0}
+input::placeholder{color:var(--faint)}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+input[type=checkbox],input[type=range]{accent-color:var(--accent)}
 .note{font-size:14px;color:var(--muted)}
 .note:empty{display:none}
 .note.err{color:var(--warn)}
+details.i{font-size:14px;color:var(--muted)}
+details.i summary{cursor:pointer;width:max-content;max-width:100%}
+details.i[open] summary{margin-bottom:4px}
 
-/* readout: looks like a one-row table */
-.read{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);max-width:1000px}
-.read div{background:var(--bg);display:flex;flex-direction:column}
-.read .k{background:var(--head);font-weight:bold;font-size:14px;padding:3px 8px;border-bottom:1px solid var(--line)}
-.read .v{padding:4px 8px;font-variant-numeric:tabular-nums}
-#readout{grid-template-columns:repeat(4,minmax(0,1fr))}
-.read[hidden]{display:none}
+/* points */
+.pts{display:flex;flex-direction:column;gap:8px}
+#pointRows{display:flex;flex-direction:column;gap:8px}
+.pt{display:flex;gap:8px;align-items:center}
+.pt input.p{width:64px;text-align:right}.pt input.y{width:112px}
+.x{border:0;background:none;color:var(--faint);font-size:20px;line-height:1;cursor:pointer;padding:2px 6px;border-radius:4px}
+.x:hover{color:var(--ink)}
+
+/* chart */
+.figure{display:flex;flex-direction:column;gap:6px;min-width:0}
+.chart{position:relative;min-width:0}
+.chart svg{display:block;max-width:100%;overflow:visible}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .axis{stroke:var(--line2);stroke-width:1}
+.chart .tick,.chart .axl{fill:var(--muted);font:12px var(--font)}
+.chart .today{stroke:var(--faint);stroke-dasharray:3 3}
+.chart .emptyT{fill:var(--muted);font:15px var(--font)}
+.chart .lab{fill:var(--ink);font:600 12px var(--font);paint-order:stroke;stroke:var(--surface);stroke-width:4px;stroke-linejoin:round}
+.chart .dot{fill:var(--surface);stroke:var(--accent);stroke-width:2.5;cursor:grab;touch-action:none}
+.chart .dotHit{fill:transparent;cursor:grab;touch-action:none}
+.guide{position:absolute;top:0;width:1px;background:var(--line2);pointer-events:none;display:none}
+.tip{position:absolute;top:8px;pointer-events:none;display:none;background:var(--surface);color:var(--ink);border:1px solid var(--line2);border-radius:7px;box-shadow:0 4px 14px rgba(0,0,0,.12);padding:6px 9px;font-size:13px;max-width:280px;z-index:3}
+.tip .h{color:var(--muted);margin-bottom:2px}
+.tip .r{display:flex;gap:12px;justify-content:space-between;align-items:center}
+.tip .r span:first-child{display:flex;gap:6px;align-items:center;overflow-wrap:anywhere}
+.sw{display:inline-block;width:14px;height:3px;border-radius:2px;flex:none}
+
+/* sliders (distribution input); they line up with the chart's x axis */
+#sliders{display:flex;flex-direction:column;gap:6px}
+.comp{display:flex;flex-direction:column;gap:2px}
+.track{position:relative;height:30px;touch-action:none}
+.track::before{content:"";position:absolute;left:0;right:0;top:14px;height:2px;border-radius:1px;background:var(--line2)}
+.track .range{position:absolute;top:14px;height:2px;background:var(--accent)}
+.handle{position:absolute;top:5px;width:20px;height:20px;margin-left:-10px;border:2px solid var(--accent);background:var(--surface);border-radius:50%;cursor:grab;padding:0;touch-action:none}
+.handle.mid{border-radius:4px;background:var(--accent)}
+.compMeta{display:flex;gap:4px 16px;align-items:center;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.compMeta .q{color:var(--ink);font-variant-numeric:tabular-nums}
+.compMeta input[type=range]{width:120px;vertical-align:middle}
+
+/* key numbers */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:12px 16px}
+.stats>div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stats .k{font-size:12px;color:var(--muted)}
+.stats .v{font-size:18px;font-weight:600}
 
 /* form */
-.form{display:flex;gap:8px 14px;align-items:end;flex-wrap:wrap}
-.form label{display:flex;flex-direction:column;gap:2px;font-size:14px}
-.btn.primary{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent);padding:8px 18px;font-size:17px;font-weight:bold;cursor:pointer}
-.btn.primary:disabled{background:var(--head);color:var(--muted);border-color:var(--line);cursor:default}
-
-/* panels, as on a Metaculus question page: "Make a prediction", then "Resolution criteria" with its fine print */
-.panel{background:var(--box);border:1px solid var(--line);padding:12px 14px;max-width:1000px}
-div.panel{display:flex;flex-direction:column;gap:12px}
-.panel .ph,details.panel>summary{font-size:20px;font-weight:bold;margin:0}
-details.panel>summary{cursor:pointer}
-details.panel[open]>summary{margin-bottom:8px}
-.pbody{display:flex;flex-direction:column;gap:8px;max-width:80ch}
-.pbody .sub{color:var(--muted);margin-top:6px}
-.step{display:flex;flex-direction:column;gap:8px}
-.step+.step{border-top:1px solid var(--line);padding-top:12px}
-.step h3{font-size:17px;margin:0}
-.step.done h3::after{content:" ✓"}
-.step .row{display:flex;gap:6px 12px;align-items:center;flex-wrap:wrap}
-/* walkthrough: a callout at the part it explains, and an outline around that part */
-.hrow{display:flex;gap:2px 14px;align-items:baseline;flex-wrap:wrap}
-.btn.link.help{color:var(--muted);font-size:13px}
-.tour{border:1px solid var(--ink);background:var(--box);padding:8px 10px;font-size:15px;max-width:60ch}
-.tour .btn{margin-left:6px}
-.tourOn{outline:2px solid var(--accent);outline-offset:6px}
-.panel .tourOn{outline-offset:3px}
+.form{display:flex;gap:10px 12px;align-items:flex-end;flex-wrap:wrap}
+.form label{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted);flex:1 1 150px}
+.form label input{width:100%;color:var(--ink);font-size:16px}
+.form .btn.primary{height:38px;padding-top:0;padding-bottom:0}
+.hp{position:absolute;left:-9999px}
 
 /* results */
-.legend{display:flex;gap:4px 16px;flex-wrap:wrap;font-size:14px}
-.legend span{display:inline-flex;gap:6px;align-items:center;overflow-wrap:anywhere}
+.legend{display:flex;gap:4px 16px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;gap:6px;align-items:center}
 .legend .ln{width:18px;height:0;border-top:3px solid;flex:none}
 .legend .ln.thin{border-top-width:2px}.legend .ln.dash{border-top-style:dashed}
-#indiv summary,#orgs summary,#chinaR summary{cursor:pointer;color:var(--link);text-decoration:underline}
+.tblw{overflow-x:auto}
+table{border-collapse:collapse;font-size:14px;width:100%}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+th{font-size:12px;font-weight:600;color:var(--muted);border-bottom-color:var(--line2)}
+tr:last-child td{border-bottom:0}
+td.num,th.num{text-align:right}
+td.nm{white-space:normal;overflow-wrap:anywhere;min-width:140px}
+td input[type=checkbox]{width:16px;height:16px;vertical-align:middle;margin:0}
+td .sw{margin-left:8px;vertical-align:middle}
 
 /* questionnaire: one question per step */
-.card[hidden]{display:none}
-#cCard{max-width:80ch;gap:12px;touch-action:pan-y}
-#cCard.inR{animation:inR .16s ease-out}#cCard.inL{animation:inL .16s ease-out}
-@keyframes inR{from{opacity:0;transform:translateX(28px)}}
-@keyframes inL{from{opacity:0;transform:translateX(-28px)}}
-@media (prefers-reduced-motion:reduce){#cCard{animation:none!important}}
-#cCard ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:4px}
-.btn.link{text-align:left}
-#cCard .btn.link{vertical-align:top}
-.cnav{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-/* probability bar: click or drag anywhere on it */
-.pbar{display:flex;flex-direction:column;gap:2px;max-width:640px}
-.pread{display:flex;gap:4px 10px;align-items:baseline;flex-wrap:wrap}
-.pread input{width:96px;font-size:22px;font-weight:bold}
-.ptrack{cursor:pointer;margin:26px 34px 0}
-.ptrack .range{left:0}
-.ptrack .handle{top:1px;width:auto;min-width:52px;height:28px;margin-left:0;transform:translateX(-50%);border-radius:14px;padding:0 8px;font-size:14px;font-weight:bold;color:var(--ink)}
-.ptrack .handle.unset{border-style:dashed;color:var(--muted)}
-.mk{position:absolute;top:5px;height:20px;width:0;border-left:2px solid var(--ink);pointer-events:none}
-.mk.now{border-left-style:dotted;border-left-color:var(--muted)}
-.mkl{position:absolute;bottom:100%;transform:translateX(-50%);background:var(--boxhead);padding:2px 8px;border-radius:10px;font-size:12px;white-space:nowrap;pointer-events:none}
-.mkl.r{transform:translateX(-88%)}.mkl.l{transform:translateX(-12%)}
-.pticks{position:relative;height:18px;margin:0 34px;font-size:12px;color:var(--muted)}
-.pticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
-.tblw{overflow-x:auto;margin-top:8px}
-table{border-collapse:collapse;font-size:15px}
-th,td{text-align:left;padding:4px 10px;border:1px solid var(--line);white-space:nowrap}
-th{background:var(--head)}
-td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
-td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
+.steps{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.steps button{min-width:34px;height:34px;padding:0 12px;border-radius:17px;border:1px solid var(--line2);background:var(--surface);cursor:pointer;font-size:14px;font-weight:600;color:var(--muted)}
+.steps button.q{padding:0}
+.steps button.ans{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.steps button[aria-current="step"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.card{display:flex;flex-direction:column;gap:14px;touch-action:pan-y}
+.card.inR{animation:inR .18s ease-out}.card.inL{animation:inL .18s ease-out}
+@keyframes inR{from{opacity:0;transform:translateX(24px)}}
+@keyframes inL{from{opacity:0;transform:translateX(-24px)}}
+@media (prefers-reduced-motion:reduce){.card{animation:none!important}}
+.qt{font-size:clamp(21px,3vw,26px);line-height:1.2}
+.qlist{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px}
+.cnav{display:flex;gap:12px;align-items:center}
+#cNext{margin-left:auto}
 
-/* modal: still big, still plain */
-#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20;overflow:auto}
-#modal[hidden]{display:none}
-.dlg{background:var(--bg);max-width:860px;width:100%;padding:clamp(16px,3vw,28px);display:flex;flex-direction:column;gap:16px;border:1px solid var(--ink);margin:auto}
-.dlg h2{font-size:clamp(24px,3.6vw,32px);margin:0}
-.choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:14px}
-.choice{all:unset;box-sizing:border-box;cursor:pointer;border:1px solid var(--line);padding:14px;display:flex;flex-direction:column;gap:8px;color:var(--ink)}
-.choice:hover,.choice:focus-visible{border-color:var(--ink);outline:1px solid var(--ink)}
-.choice .q{font-weight:bold;font-size:20px;text-wrap:balance}
-.choice .go{margin-top:auto}
-.choice svg{width:100%;height:auto;border:1px solid var(--line)}
+/* probability line: click or drag anywhere on it */
+.pbar{display:flex;flex-direction:column;gap:4px}
+.pread{display:flex;gap:6px 10px;align-items:center;flex-wrap:wrap}
+.pread input{width:96px;height:42px;font-size:20px;font-weight:600;text-align:right}
+.ptrack{cursor:pointer;margin:30px 30px 0;height:34px}
+.ptrack::before{top:16px}.ptrack .range{top:16px;left:0}
+.ptrack .handle{top:3px;width:auto;min-width:56px;height:28px;margin-left:0;transform:translateX(-50%);border-radius:14px;padding:0 9px;font-size:14px;font-weight:700;color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.15)}
+.ptrack .handle.unset{border-style:dashed;color:var(--faint);box-shadow:none}
+.mk{position:absolute;top:8px;height:18px;width:0;border-left:2px solid var(--ink);pointer-events:none}
+.mk.now{border-left-style:dotted;border-left-color:var(--faint)}
+.mkl{position:absolute;bottom:calc(100% - 2px);transform:translateX(-50%);background:var(--sunk);border:1px solid var(--line2);padding:1px 8px;border-radius:10px;font-size:12px;white-space:nowrap;pointer-events:none}
+.mkl.r{transform:translateX(-88%)}.mkl.l{transform:translateX(-12%)}
+.pticks{position:relative;height:18px;margin:0 30px;font-size:12px;color:var(--muted)}
+.pticks span{position:absolute;transform:translateX(-50%);white-space:nowrap}
+
+/* submit dock: while step 2 is off screen, a bar at the bottom of the screen leads to it */
+.dock{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:min(640px,calc(100% - 32px));z-index:20;background:var(--surface);border:1px solid var(--line2);border-radius:12px;padding:8px 8px 8px 16px;display:flex;gap:12px;align-items:center;justify-content:space-between;box-shadow:0 8px 24px rgba(0,0,0,.14);font-size:15px}
+.dock .btn.primary{padding:7px 16px}
+body.docked{padding-bottom:84px}
+
+/* walkthrough: the text is in a bar at the bottom of the screen, and an outline marks the part it explains */
+.coach{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);width:min(640px,calc(100% - 32px));z-index:30;background:var(--ink);color:var(--bg);border-radius:12px;padding:12px 14px;display:flex;gap:10px 14px;align-items:center;flex-wrap:wrap;box-shadow:0 10px 30px rgba(0,0,0,.25);font-size:15px}
+.coach p{flex:1 1 300px}
+.coach .btn{background:var(--bg);color:var(--ink);border-color:var(--bg);font-weight:600;padding:6px 16px}
+.coach .btn.link{background:none;color:var(--bg);font-weight:400;padding:0}
+.tourOn{outline:2px solid var(--accent);outline-offset:4px;border-radius:6px;scroll-margin:72px 0 170px}
+
+@media (max-width:560px){
+  .xl{display:none}
+  .tabs{gap:20px}
+  .pt{gap:6px}.pt input.p{width:54px}.pt input.y{width:88px}
+  .wrap{padding-top:18px}
+  .panel{padding:14px}
+  .hero{align-items:flex-start}
+  .ptrack{margin-left:26px;margin-right:26px}.pticks{margin:0 26px}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <nav class="tabs" aria-label="Views"><a href="#forecast" id="tabF">Your forecast</a><a href="#china" id="tabC">China questions</a><a href="#results" id="tabR">Everyone's forecasts <span class="n" id="nCount"></span></a></nav>
-  <header class="top">
-    <div class="hrow"><h1 id="pageH">When will transformative AI arrive?</h1><button class="btn link help" id="tourBtn" type="button">Show the walkthrough</button></div>
-    <p class="def" id="pageSub">TAI = AI capable of performing 98% of current (2026) remote jobs.</p>
+<header class="top">
+  <nav class="tabs" aria-label="Views"><a href="#forecast" id="tabF">Your forecast</a><a href="#china" id="tabC">China<span class="xl"> questions</span></a><a href="#results" id="tabR">Everyone<span class="xl">'s forecasts</span><span class="badge" id="nCount"></span></a></nav>
+</header>
+<main class="wrap">
+  <header class="qhead">
+    <div>
+      <p class="kick" id="pageKick">TAI timelines</p>
+      <h1 id="pageH">When will transformative AI arrive?</h1>
+      <p class="def" id="pageSub">TAI = AI capable of performing 98% of current (2026) remote jobs. <button class="btn link help" id="tourBtn" type="button">Show the walkthrough</button></p>
+    </div>
+    <div class="hero" id="hero" hidden><span class="v" id="heroV">–</span><span class="k">community median year</span><span class="k" id="heroN"></span></div>
   </header>
 
-  <section id="viewC" hidden>
-    <div class="seg" id="cSteps" role="group" aria-label="Questions"></div>
-    <div class="card" id="cCard"></div>
-    <div class="card" id="cSubmit" hidden>
-      <form class="form" id="cForm">
-        <label>Name<input type="text" id="cName" maxlength="80" required autocomplete="name"></label>
-        <label>Organization (optional)<input type="text" id="cOrg" maxlength="80" list="orgList" autocomplete="organization"></label>
-        <button class="btn primary" id="cBtn" type="submit">Submit answers</button>
-      </form>
-      <p class="note" id="cStatus"></p>
-    </div>
-    <div class="cnav"><button class="btn" id="cPrev" type="button">← Previous</button><button class="btn" id="cNext" type="button">Next →</button></div>
-  </section>
-
   <section id="viewF">
-    <div class="card">
-      <div class="bar">
-        <div class="right">
-          <div class="seg" id="eView" role="group" aria-label="Curve type"><button type="button" data-v="cdf">Cumulative</button><button type="button" data-v="pdf">Density</button></div>
-          <span>Show until</span>
-          <div class="seg" id="eHor" role="group" aria-label="Chart horizon"><button type="button" data-v="2040">2040</button><button type="button" data-v="2060">2060</button><button type="button" data-v="2100">2100</button></div>
-        </div>
-      </div>
-      <div class="chart" id="eChart"><div class="plot"></div><div class="guide"></div><div class="tip"></div></div>
-      <div id="sliders"></div>
-    </div>
     <div class="panel">
       <h2 class="ph">Make a prediction</h2>
       <div class="step" id="st1">
-        <h3>1. Enter your forecast</h3>
-        <p id="st1Hint"></p>
-        <div class="row"><span>Input: <span class="modeLabel" id="modeLabel"></span></span><button class="btn link" id="switchMode" type="button">change</button><details class="i" id="eInfo"><summary aria-label="How this works">ⓘ</summary><div id="eInfoT"></div></details></div>
-        <div id="distPanel" hidden>
-          <button class="btn" id="addComp" type="button">+ Add component</button>
+        <div class="sh"><h3><span class="n">1</span>Enter your forecast</h3>
+          <div class="seg" id="eMode" role="group" aria-label="Input type"><button type="button" data-v="points">By year</button><button type="button" data-v="dist">Distribution</button></div>
         </div>
-        <div id="pointsPanel" hidden style="display:flex;flex-direction:column;gap:10px">
+        <p class="hint" id="st1Hint"></p>
+        <div class="pts" id="pointsPanel" hidden>
           <div id="pointRows"></div>
-          <div><button class="btn" id="addPoint" type="button">+ Add point</button></div>
+          <div><button class="btn sm" id="addPoint" type="button">+ Add point</button></div>
         </div>
+        <div class="figure">
+          <div class="bar">
+            <div class="seg" id="eView" role="group" aria-label="Curve type"><button type="button" data-v="cdf">Cumulative</button><button type="button" data-v="pdf">Density</button></div>
+            <div><span class="lbl">Show until</span><div class="seg" id="eHor" role="group" aria-label="Chart horizon"><button type="button" data-v="2040">2040</button><button type="button" data-v="2060">2060</button><button type="button" data-v="2100">2100</button></div></div>
+          </div>
+          <div class="chart" id="eChart"><div class="plot"></div><div class="guide"></div><div class="tip"></div></div>
+          <div id="sliders"></div>
+        </div>
+        <div id="distPanel" hidden><button class="btn sm" id="addComp" type="button">+ Add component</button></div>
         <p class="note" id="fitNote"></p>
+        <div class="stats" id="readout"></div>
+        <details class="i" id="eInfo"><summary>How the curve is made</summary><div id="eInfoT"></div></details>
       </div>
       <div class="step" id="st2">
-        <h3>2. Submit</h3>
+        <div class="sh"><h3><span class="n">2</span>Submit</h3></div>
         <form class="form" id="form">
           <label>Name<input type="text" id="fName" maxlength="80" required autocomplete="name"></label>
           <label>Organization (optional)<input type="text" id="fOrg" maxlength="80" list="orgList" autocomplete="organization"><datalist id="orgList"></datalist></label>
           <label>Years of relevant experience<input type="number" id="fYears" min="0" max="70" step="1" value="0"></label>
-          <input type="text" id="fSite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px"><button class="btn primary" id="submitBtn" type="submit">Submit forecast</button>
+          <input type="text" class="hp" id="fSite" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+          <button class="btn primary" id="submitBtn" type="submit">Submit forecast</button>
         </form>
         <p class="note" id="subWhy"></p>
         <p class="note" id="nameHint" hidden></p>
         <p class="note" id="status">Visible to everyone who can open this page.</p>
       </div>
-      <div class="step" id="st3">
-        <h3>3. Compare</h3>
-        <p><a href="#results">Everyone's forecasts</a> shows the pooled forecast with your curve on it.</p>
-      </div>
     </div>
-    <div class="read" id="readout"></div>
     <div id="defF">
       <details class="panel" id="pageDef" open><summary>Resolution criteria</summary>
         <div class="pbody">
@@ -262,59 +299,51 @@ td.nm{white-space:normal;overflow-wrap:anywhere;min-width:120px}
     </div>
   </section>
 
+  <section id="viewC" hidden>
+    <nav class="steps" id="cSteps" aria-label="Questions"></nav>
+    <div class="card" id="cCard"></div>
+    <div class="panel" id="cSubmit" hidden>
+      <h2 class="ph">Submit your answers</h2>
+      <form class="form" id="cForm">
+        <label>Name<input type="text" id="cName" maxlength="80" required autocomplete="name"></label>
+        <label>Organization (optional)<input type="text" id="cOrg" maxlength="80" list="orgList" autocomplete="organization"></label>
+        <button class="btn primary" id="cBtn" type="submit">Submit answers</button>
+      </form>
+      <p class="note" id="cStatus"></p>
+    </div>
+    <div class="cnav"><button class="btn" id="cPrev" type="button">← Previous</button><button class="btn primary" id="cNext" type="button">Next →</button></div>
+  </section>
+
   <section id="viewR" hidden>
-    <div class="read" id="rTiles"></div>
-    <div class="card">
+    <div class="panel">
+      <div class="stats" id="rTiles"></div>
       <div class="bar">
-        <div class="left">
+        <div>
           <div class="seg" id="rView" role="group" aria-label="Curve type"><button type="button" data-v="cdf">Cumulative</button><button type="button" data-v="pdf">Annual</button></div>
           <div class="seg" id="rAvg" role="group" aria-label="Averaging method"><button type="button" data-v="geo">Geo mean of odds</button><button type="button" data-v="arith">Arithmetic mean</button></div>
         </div>
-        <div class="right"><label id="oldWrap" hidden><input type="checkbox" id="incOld" checked> Include 99%-definition forecasts</label><span>Show until</span>
-          <div class="seg" id="rHor" role="group" aria-label="Chart horizon"><button type="button" data-v="2040">2040</button><button type="button" data-v="2060">2060</button><button type="button" data-v="2100">2100</button></div>
-        </div>
+        <div><span class="lbl">Show until</span><div class="seg" id="rHor" role="group" aria-label="Chart horizon"><button type="button" data-v="2040">2040</button><button type="button" data-v="2060">2060</button><button type="button" data-v="2100">2100</button></div></div>
       </div>
+      <label class="lbl" id="oldWrap" hidden><input type="checkbox" id="incOld" checked> Include forecasts made under the earlier 99% definition</label>
       <div class="legend" id="rLegend"></div>
       <div class="chart" id="rChart"><div class="plot"></div><div class="guide"></div><div class="tip"></div></div>
-      <p class="note" id="rNote"></p><details class="i"><summary aria-label="How the aggregate is computed">ⓘ</summary><div id="rInfoT"></div></details>
+      <p class="note" id="rNote"></p>
+      <details class="i"><summary>How the pooled line is made</summary><div id="rInfoT"></div></details>
     </div>
     <div id="defR"></div>
-    <div class="card">
-      <details id="orgs"><summary>Organizations</summary>
-        <div class="tblw"><table><thead><tr><th>Show</th><th>Organization</th><th class="num">Forecasters</th><th class="num">Median</th></tr></thead><tbody id="oBody"></tbody></table></div>
-      </details>
-    </div>
-    <div class="card">
-      <details id="indiv"><summary>Individual forecasts</summary>
-        <div class="tblw"><table><thead><tr><th>Show</th><th>Name</th><th>Organization</th><th class="num">Exp. (yrs)</th><th class="num">TAI def.</th><th class="num">Updated</th><th class="num">10%</th><th class="num">Median</th><th class="num">90%</th></tr></thead><tbody id="rBody"></tbody></table></div>
-      </details>
-    </div>
-    <div class="card">
-      <details id="chinaR"><summary>China questions</summary><div class="tblw" id="rChina"></div></details>
-    </div>
+    <details class="panel" id="orgs"><summary>Organizations</summary>
+      <p class="note">Tick an organization to draw the pooled line of its forecasters. Up to four at a time.</p>
+      <div class="tblw"><table><thead><tr><th>Show</th><th>Organization</th><th class="num">Forecasters</th><th class="num">Median</th></tr></thead><tbody id="oBody"></tbody></table></div>
+    </details>
+    <details class="panel" id="indiv"><summary>Individual forecasts</summary>
+      <div class="tblw"><table><thead><tr><th>Show</th><th>Name</th><th>Organization</th><th class="num">Exp. (yrs)</th><th class="num">TAI def.</th><th class="num">Updated</th><th class="num">10%</th><th class="num">Median</th><th class="num">90%</th></tr></thead><tbody id="rBody"></tbody></table></div>
+    </details>
+    <details class="panel" id="chinaR"><summary>China questions</summary><div class="tblw" id="rChina"></div></details>
   </section>
-</div>
+</main>
 
-<div id="modal" hidden role="dialog" aria-modal="true" aria-labelledby="mTitle">
-  <div class="dlg">
-    <h2 id="mTitle">How do you want to give your forecast?</h2>
-    <div class="choices">
-      <button class="choice" type="button" data-mode="points">
-        <svg viewBox="0 0 300 110" aria-hidden="true"><path d="M10 98 C80 96 110 70 150 55 S240 18 290 14" fill="none" style="stroke:var(--accent)" stroke-width="3"/><circle cx="92" cy="85" r="6" style="fill:var(--bg);stroke:var(--accent)" stroke-width="3"/><circle cx="150" cy="55" r="6" style="fill:var(--bg);stroke:var(--accent)" stroke-width="3"/><circle cx="232" cy="24" r="6" style="fill:var(--bg);stroke:var(--accent)" stroke-width="3"/></svg>
-        <span class="q">I want to say X% by a specific year</span>
-        <p>"10% before 2030, 50% before 2040." A curve is fitted through your points.</p>
-        <span class="go">Enter points</span>
-      </button>
-      <button class="choice" type="button" data-mode="dist">
-        <svg viewBox="0 0 300 110" aria-hidden="true"><path d="M10 84 C60 84 70 20 105 20 S150 78 185 66 S235 46 290 82 L290 84 Z" style="fill:none;stroke:var(--accent)" stroke-width="3"/><line x1="10" x2="290" y1="98" y2="98" style="stroke:var(--line)" stroke-width="2"/><line x1="70" x2="150" y1="98" y2="98" style="stroke:var(--accent)" stroke-width="4"/><circle cx="70" cy="98" r="6" style="fill:var(--bg);stroke:var(--accent)" stroke-width="3"/><rect x="99" y="92" width="12" height="12" rx="2" style="fill:var(--accent)"/><circle cx="150" cy="98" r="6" style="fill:var(--bg);stroke:var(--accent)" stroke-width="3"/></svg>
-        <span class="q">I know what I'm doing. Give me a distribution.</span>
-        <p>Metaculus-style sliders: drag quartiles, add weighted components.</p>
-        <span class="go">Use sliders</span>
-      </button>
-    </div>
-    <p class="note">You can switch later.</p>
-  </div>
-</div>
+<div class="dock" id="dock" hidden><span id="dockT"></span><button class="btn primary" id="dockBtn" type="button">Submit ↓</button></div>
+<div class="coach" id="coach" hidden role="status" aria-live="polite"><p id="coachT"></p><button class="btn" id="coachNext" type="button">Next</button><button class="btn link" id="coachSkip" type="button">Skip</button></div>
 
 <script>
 "use strict";
@@ -378,23 +407,27 @@ function model(){ // -> {ok,cdf,note,err,comps}
 function gridOf(cdf){const g=[];let m=0;for(let Y=GY0;Y<=GY1;Y++){m=Math.max(m,clamp(cdf(Y),0,1));g.push(+m.toFixed(5))}return g}
 
 /* ---------- chart ---------- */
-const MG={l:46,r:16,t:12,b:28};
+const MG={l:42,r:12,t:14,b:26};
 const pct=v=>v==null?'–':v<.0005?'<0.1%':v<.1?(v*100).toFixed(1)+'%':Math.round(v*100)+'%';
 function interp(pts,x){if(!pts.length||x<pts[0][0]||x>pts[pts.length-1][0])return null;let lo=0,hi=pts.length-1;while(hi-lo>1){const m=(lo+hi)>>1;pts[m][0]<=x?lo=m:hi=m}const a=pts[lo],b=pts[hi];return b[0]===a[0]?a[1]:a[1]+(b[1]-a[1])*(x-a[0])/(b[0]-a[0])}
 function niceStep(max){const r=max/4,e=Math.pow(10,Math.floor(Math.log10(r))),f=r/e;return (f<1.5?1:f<3.5?2:f<7.5?5:10)*e}
 function drawChart(host,c){
-  const W=Math.max(280,host.clientWidth),H=W<520?250:c.h||340,pw=W-MG.l-MG.r,ph=H-MG.t-MG.b;
+  const W=Math.max(280,host.clientWidth),H=c.h?(W<520?Math.min(c.h,220):c.h):(W<520?250:340),mr=c.series.some(q=>q.label)?74:MG.r,pw=W-MG.l-mr,ph=H-MG.t-MG.b;
   const X=x=>MG.l+(x-c.xmin)/(c.xmax-c.xmin)*pw,Yp=y=>MG.t+(1-y/c.ymax)*ph;
-  const span=c.xmax-c.xmin,xs=span<=16?2:span<=40?5:10,id=host.id+'clip';
+  const span=c.xmax-c.xmin,xs=[2,5,10,20,25,50].find(v=>pw*v/span>=44)||100,id=host.id+'clip';
   let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="${c.aria}"><defs><clipPath id="${id}"><rect x="${MG.l}" y="${MG.t-4}" width="${pw}" height="${ph+4}"/></clipPath></defs>`;
-  for(const t of c.yticks)s+=`<line class="grid" x1="${MG.l}" x2="${W-MG.r}" y1="${Yp(t)}" y2="${Yp(t)}"/><text class="tick" x="${MG.l-7}" y="${Yp(t)+4}" text-anchor="end">${c.yfmt(t)}</text>`;
-  for(let t=Math.ceil(c.xmin/xs)*xs;t<=c.xmax;t+=xs)s+=`<line class="grid" x1="${X(t)}" x2="${X(t)}" y1="${MG.t}" y2="${MG.t+ph}"/><text class="tick" x="${X(t)}" y="${H-9}" text-anchor="middle">${t}</text>`;
-  s+=`<line class="today" x1="${X(NOW)}" x2="${X(NOW)}" y1="${MG.t}" y2="${MG.t+ph}"/><text class="axl" x="${X(NOW)+4}" y="${MG.t+10}">today</text><line class="axis" x1="${MG.l}" x2="${W-MG.r}" y1="${MG.t+ph}" y2="${MG.t+ph}"/>`;
+  for(const t of c.yticks)s+=`<line class="grid" x1="${MG.l}" x2="${W-mr}" y1="${Yp(t)}" y2="${Yp(t)}"/><text class="tick" x="${MG.l-7}" y="${Yp(t)+4}" text-anchor="end">${c.yfmt(t)}</text>`;
+  for(let t=Math.ceil(c.xmin/xs)*xs;t<=c.xmax;t+=xs)s+=`<line class="axis" x1="${X(t)}" x2="${X(t)}" y1="${MG.t+ph}" y2="${MG.t+ph+4}"/><text class="tick" x="${X(t)}" y="${H-7}" text-anchor="middle">${t}</text>`;
+  s+=`<line class="today" x1="${X(NOW)}" x2="${X(NOW)}" y1="${MG.t}" y2="${MG.t+ph}"/><text class="axl" x="${X(NOW)+4}" y="${MG.t+10}">today</text><line class="axis" x1="${MG.l}" x2="${W-mr}" y1="${MG.t+ph}" y2="${MG.t+ph}"/>`;
   s+=`<g clip-path="url(#${id})">`;
   for(const q of c.series){if(q.pts.length<2)continue;const d=q.pts.map((p,i)=>(i?'L':'M')+X(p[0]).toFixed(1)+' '+Yp(p[1]).toFixed(1)).join('');
     if(q.fill)s+=`<path d="${d}L${X(q.pts[q.pts.length-1][0]).toFixed(1)} ${Yp(0)}L${X(q.pts[0][0]).toFixed(1)} ${Yp(0)}Z" style="fill:${q.color};opacity:.13"/>`;
     s+=`<path d="${d}" fill="none" stroke-linejoin="round" style="stroke:${q.color}" stroke-width="${q.width||2}"${q.dash?` stroke-dasharray="${q.dash}"`:''}/>`}
   s+='</g>';
+  // Direct labels in the right margin, level with the end of their line, pushed apart so that they do not overlap.
+  const labs=c.series.filter(q=>q.label).map(q=>{const v=interp(q.pts,c.xmax);return v==null?null:{t:q.label,y:Yp(Math.min(v,c.ymax))+4}}).filter(Boolean).sort((a,b)=>a.y-b.y);
+  for(let i=1;i<labs.length;i++)if(labs[i].y-labs[i-1].y<14)labs[i].y=labs[i-1].y+14;
+  labs.forEach(l=>{s+=`<text class="lab" x="${W-mr+8}" y="${clamp(l.y,MG.t+4,MG.t+ph+4).toFixed(1)}">${l.t}</text>`});
   (c.dots||[]).forEach(d=>{if(d.x>c.xmax)return;s+=`<circle class="dot" cx="${X(d.x)}" cy="${Yp(d.y)}" r="6"/><circle class="dotHit" data-dot="${d.i}" cx="${X(d.x)}" cy="${Yp(d.y)}" r="16"/>`});
   if(c.empty)s+=`<text class="emptyT" x="${MG.l+pw/2}" y="${MG.t+ph/2}" text-anchor="middle">${c.empty}</text>`;
   host.querySelector('.plot').innerHTML=s+'</svg>';
@@ -448,15 +481,15 @@ function renderEditor(){
   const rd=$('readout');rd.textContent='';
   const cell=(k,v,cls)=>{const d=document.createElement('div');if(cls)d.className=cls;const a=document.createElement('span'),b=document.createElement('span');a.className='k';b.className='v';a.textContent=k;b.textContent=v;d.appendChild(a);d.appendChild(b);rd.appendChild(d)};
   const qy=q=>{if(!m.ok)return '–';const x=quantileOf(m.cdf,q);return x>=2300?'after 2300':String(Math.floor(x+1e-6))};
-  cell('10% by',qy(.1));cell('25% by',qy(.25));cell('Median',qy(.5),'med');cell('75% by',qy(.75));cell('90% by',qy(.9));
+  cell('Median year',qy(.5),'med');cell('10% to 90%',m.ok?qy(.1)+'–'+qy(.9):'–');
   [2030,2040,2100].filter(y=>y>Y0).forEach(y=>cell('Before '+y,m.ok?pct(m.cdf(y)):'–'));
-  updateSliders();updateSubmit();
+  updateSliders();updateSubmit();dock();
   if(!$('viewR').hidden)renderResults();
 }
 function syncPointInputs(){document.querySelectorAll('#pointRows .pt').forEach((r,i)=>{const q=S.points[i];if(!q)return;const p=r.querySelector('.p'),y=r.querySelector('.y');if(document.activeElement!==p)p.value=q.p??'';if(document.activeElement!==y)y.value=q.year??''})}
 function buildPoints(){const host=$('pointRows');host.textContent='';
   S.points.forEach((q,i)=>{const r=document.createElement('div');r.className='pt';
-    r.innerHTML=`<input class="p" id="pp${i}" type="number" min="1" max="99" step="1" aria-label="Probability in percent"><span class="t">% chance of TAI before</span><input class="y" id="py${i}" type="number" min="${GY0}" max="2500" step="any" placeholder="e.g. ${Y0+4+i*10}" aria-label="Year"><button class="x" type="button" aria-label="Remove point" ${S.points.length<=2?'hidden':''}>×</button>`;
+    r.innerHTML=`<input class="p" id="pp${i}" type="number" min="1" max="99" step="1" aria-label="Probability in percent"><span class="t">% chance <span class="xl">of TAI </span>before</span><input class="y" id="py${i}" type="number" min="${GY0}" max="2500" step="any" placeholder="e.g. ${Y0+4+i*10}" aria-label="Year"><button class="x" type="button" aria-label="Remove point" ${S.points.length<=2?'hidden':''}>×</button>`;
     const p=r.querySelector('.p'),y=r.querySelector('.y');p.value=q.p??'';y.value=q.year??'';
     p.addEventListener('input',()=>{q.p=p.value===''?null:+p.value;renderEditor();persist()});
     y.addEventListener('input',()=>{q.year=y.value===''?null:+y.value;renderEditor();persist()});
@@ -497,18 +530,11 @@ function setMode(mode){
   }
   if(mode==='points'&&prev==='dist'&&S.distTouched&&m&&m.ok&&validPoints().length<2){let last=Y0;S.points=[10,50,90].map(p=>{let y=Math.max(last+1,Math.round(quantileOf(m.cdf,p/100)));y=Math.min(y,2500);last=y;return {p,year:y}})}
   S.mode=mode;S.view=mode==='dist'?'pdf':'cdf';
-  $('modeLabel').textContent=mode==='dist'?'Sliders':'Points';
-  $('st1Hint').textContent=mode==='dist'?'Drag the handles under the chart. The circles are the 25% and 75% quartiles; the square is the median.':'Type a probability and a year in each row. Two rows are enough. The chart shows your curve as you type, and you can drag the points on it.';
-  $('pointsPanel').hidden=mode!=='points';$('pointsPanel').style.display=mode==='points'?'flex':'none';$('distPanel').hidden=mode!=='dist';
-  setSeg($('eView'),S.view);setSeg($('eHor'),S.horizon);buildPoints();buildSliders();renderEditor();persist();
+  $('st1Hint').textContent=mode==='dist'?'Drag the handles under the chart. The circles are the 25% and 75% quartiles; the square is the median.':'Type a chance and a year in each row. Two rows are enough: your curve appears in the chart.';
+  $('pointsPanel').hidden=mode!=='points';$('distPanel').hidden=mode!=='dist';
+  setSeg($('eMode'),mode);setSeg($('eView'),S.view);setSeg($('eHor'),S.horizon);buildPoints();buildSliders();renderEditor();persist();
 }
-function openModal(){$('modal').hidden=false;$('modal').querySelector('.choice').focus()}
-function closeModal(mode){$('modal').hidden=true;setMode(mode||S.mode||'points');
-  const y=[...document.querySelectorAll('#pointRows .y')].find(i=>!i.value);if(S.mode==='points'&&y)y.focus(); // the cursor goes where a new user starts
-  let seen=true;try{seen=!!localStorage.getItem('tai-tour')}catch(e){}if(!seen)tour(0)}
-document.querySelectorAll('.choice').forEach(b=>b.addEventListener('click',()=>closeModal(b.dataset.mode)));
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('modal').hidden)closeModal()});
-$('switchMode').addEventListener('click',openModal);
+wireSeg($('eMode'),v=>setMode(v));
 $('addPoint').addEventListener('click',()=>{const used=S.points.map(q=>q.p),next=[10,50,90,25,75,5,95].find(p=>!used.includes(p))??null;S.points.push({p:next,year:null});buildPoints();renderEditor();persist();const ys=document.querySelectorAll('#pointRows .y');ys[ys.length-1].focus()});
 $('addComp').addEventListener('click',()=>{S.comps.push(defaultComp());S.distTouched=true;buildSliders();renderEditor();persist()});
 function wireSeg(el,fn){el.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;setSeg(el,b.dataset.v);fn(b.dataset.v)})}
@@ -548,36 +574,41 @@ function gridQuantile(g,q){if(g[g.length-1]<q)return 'after '+(GY1-1);let prevX=
 function renderResults(){
   const rows=people(),host=$('rChart'),series=[],leg=$('rLegend');leg.textContent='';const nOld=rows.filter(r=>r.old).length,allOld=R.rows.some(r=>r.old);$('oldWrap').hidden=!allOld;
   const addLeg=(name,color,cls)=>{const s=document.createElement('span'),l=document.createElement('span');l.className='ln '+(cls||'');l.style.borderTopColor=color;s.appendChild(l);s.appendChild(document.createTextNode(name));leg.appendChild(s)};
-  $('nCount').textContent=R.loaded?'('+rows.length+')':'';
+  $('nCount').textContent=R.loaded?String(rows.length):'';
   let agg=null,orgs=[];
   if(rows.length){
     const groups={};rows.forEach(r=>{if(!r.org)return;const k=r.org.toLowerCase();(groups[k]=groups[k]||{name:r.org,rows:[]}).rows.push(r)});
     orgs=Object.entries(groups).map(([k,g])=>({k,name:g.name,rows:g.rows})).sort((a,b)=>b.rows.length-a.rows.length||a.name.localeCompare(b.name));
-    // An organization is drawn only when the viewer ticks it in the Organizations list.
-    orgs.forEach(g=>{g.on=!!R.orgShow[g.k]});
-    orgs.filter(g=>g.on).forEach((g,i)=>{const col=`var(--o${i%4+1})`,nm=g.name+' (n='+g.rows.length+')';g.avg=average(g.rows,R.avg);series.push({pts:gridPts(g.avg,R.view),color:col,width:1.75,name:nm});addLeg(nm,col,'thin')});
+    // An organization is drawn only when the viewer ticks it in the Organizations list. It keeps its color slot (1 to 4)
+    // until it is unticked, so a tick or an untick never repaints the other lines.
+    orgs.forEach(g=>{g.slot=R.orgShow[g.k]||0;g.on=g.slot>0});
+    orgs.filter(g=>g.on).forEach(g=>{const col=`var(--o${g.slot})`,nm=g.name+' (n='+g.rows.length+')';g.avg=average(g.rows,R.avg);series.push({pts:gridPts(g.avg,R.view),color:col,width:1.75,name:nm});addLeg(nm,col,'thin')});
     rows.forEach(r=>{if(R.overlay[r.id]){series.push({pts:gridPts(average([r],'arith'),R.view),color:'var(--muted)',width:1.25,name:r.name});}});
     if(Object.keys(R.overlay).some(k=>R.overlay[k]))addLeg('Selected individuals','var(--muted)','thin');
     agg=average(rows,R.avg);const nm='All forecasters (n='+rows.length+')';
-    series.push({pts:gridPts(agg,R.view),color:'var(--ink)',width:3.25,fill:true,name:nm});
+    series.push({pts:gridPts(agg,R.view),color:'var(--ink)',width:2.75,fill:true,name:nm,label:'Everyone'});
     const s0=document.createElement('span'),l0=document.createElement('span');l0.className='ln';l0.style.borderTopColor='var(--ink)';s0.appendChild(l0);s0.appendChild(document.createTextNode(nm));leg.insertBefore(s0,leg.firstChild);
   }
   const you=lastModel&&lastModel.ok?gridOf(lastModel.cdf):null;
-  if(you){series.push({pts:gridPts(you,R.view),color:'var(--accent)',width:2.25,dash:'6 4',name:S.saved?'You':'You (not submitted)'});addLeg(S.saved?'You':'You (not submitted)','var(--accent)','dash')}
+  if(you){series.push({pts:gridPts(you,R.view),color:'var(--accent)',width:2.25,dash:'6 4',name:S.saved?'You':'You (not submitted)',label:'You'});addLeg(S.saved?'You':'You (not submitted)','var(--accent)','dash')}
+  if(series.filter(q=>q.name).length>4)series.forEach(q=>{delete q.label}); // more than four lines: the legend alone names them
   let ymax=1,yticks=[0,.25,.5,.75,1],yfmt=t=>Math.round(t*100)+'%';
   if(R.view==='pdf'){let mx=.002;series.forEach(q=>q.pts.forEach(p=>{if(p[0]<=R.horizon)mx=Math.max(mx,p[1])}));const st=niceStep(mx*1.1);yticks=[];for(let t=0;t<mx*1.1+st*.5;t+=st)yticks.push(t);ymax=yticks[yticks.length-1];yfmt=t=>+(t*100).toFixed(2)+'%'}
   drawChart(host,{xmin:Y0,xmax:R.horizon,ymax,yticks,yfmt,series,aria:'Aggregate forecast chart',
     empty:series.length?'':(R.loaded?'No forecasts yet':R.msg||'Loading forecasts…'),
     snap:x=>R.view==='cdf'?Math.max(GY0,Math.round(x)):Math.max(GY0,Math.floor(x))+.5,head:x=>R.view==='cdf'?'before '+x:'during '+Math.floor(x),vfmt:pct});
   $('rNote').textContent=rows.length?'':(R.loaded?'':R.msg||'');
-  $('rInfoT').textContent=(R.avg==='geo'?'The black line pools every individual forecast with the geometric mean of odds.':'The black line is the arithmetic mean of every individual forecast.')+' The dashed line is your own forecast. To add a line for an organization, tick it under Organizations; it is averaged the same way. One forecast per name: the latest.'+(nOld?' '+nOld+' forecasts were made under the earlier 99% definition.':'');
+  $('rInfoT').textContent=(R.avg==='geo'?'The thick line pools every individual forecast with the geometric mean of odds.':'The thick line is the arithmetic mean of every individual forecast.')+' The dashed blue line is your own forecast. To add a line for an organization, tick it under Organizations; it is averaged the same way. One forecast per name: the latest.'+(nOld?' '+nOld+' forecasts were made under the earlier 99% definition.':'');
   const t=$('rTiles');t.textContent='';
   const cell=(k,v,cls)=>{const d=document.createElement('div');if(cls)d.className=cls;const a=document.createElement('span'),b=document.createElement('span');a.className='k';b.className='v';a.textContent=k;b.textContent=v;d.appendChild(a);d.appendChild(b);t.appendChild(d)};
-  cell('Forecasters',R.loaded?String(rows.length):'–');cell('Aggregate median',agg?gridQuantile(agg,.5):'–','med');
+  cell('10% to 90%',agg?gridQuantile(agg,.1)+'–'+gridQuantile(agg,.9):'–');
+  $('heroV').textContent=agg?gridQuantile(agg,.5):'–';$('heroN').textContent=R.loaded?rows.length+' forecaster'+(rows.length===1?'':'s'):'';
   [2030,2040,2060].filter(y=>y>GY0).forEach(y=>cell('Before '+y,agg?pct(agg[y-GY0]):'–'));
   const ob=$('oBody');ob.textContent='';$('orgs').querySelector('summary').textContent='Organizations ('+orgs.length+')';
-  orgs.forEach(g=>{const tr=document.createElement('tr'),c0=document.createElement('td'),cb=document.createElement('input');cb.type='checkbox';cb.id='og-'+g.k.replace(/[^a-z0-9]+/g,'-');cb.checked=g.on;cb.setAttribute('aria-label','Show '+g.name+' on the chart');
-    cb.addEventListener('change',()=>{R.orgShow[g.k]=cb.checked;renderResults()});c0.appendChild(cb);tr.appendChild(c0);
+  const used=Object.values(R.orgShow);
+  orgs.forEach(g=>{const tr=document.createElement('tr'),c0=document.createElement('td'),cb=document.createElement('input');cb.type='checkbox';cb.id='og-'+g.k.replace(/[^a-z0-9]+/g,'-');cb.checked=g.on;cb.disabled=!g.on&&used.length>=4;cb.setAttribute('aria-label','Show '+g.name+' on the chart');
+    cb.addEventListener('change',()=>{if(cb.checked){const f=[1,2,3,4].find(n=>!Object.values(R.orgShow).includes(n));if(f)R.orgShow[g.k]=f}else delete R.orgShow[g.k];renderResults()});c0.appendChild(cb);
+    if(g.on){const sw=el('span','sw');sw.style.background=`var(--o${g.slot})`;c0.appendChild(sw)}tr.appendChild(c0);
     const td=(v,c)=>{const e=document.createElement('td');if(c)e.className=c;e.textContent=v;tr.appendChild(e)};
     td(g.name,'nm');td(String(g.rows.length),'num');td(gridQuantile(g.avg||average(g.rows,R.avg),.5),'num');ob.appendChild(tr)});
   const body=$('rBody');body.textContent='';
@@ -598,8 +629,8 @@ function nameHint(){const el=$('nameHint'),k=nameKey($('fName').value),hit=k?R.r
   el.hidden=!hit;if(!hit)return;el.textContent='"'+hit.name+'" already has a forecast'+(hit.at?' ('+hit.at.slice(0,10)+')':'')+'. Submitting replaces it. ';
   const b=document.createElement('button');b.type='button';b.className='btn link';b.textContent='Load it';b.addEventListener('click',()=>{loadForecast(hit.raw);if(!$('fOrg').value)$('fOrg').value=hit.org;if(hit.years!=null&&!+$('fYears').value)$('fYears').value=hit.years});el.appendChild(b)}
 function loadForecast(d){
-  if(d.mode==='dist'&&Array.isArray(d.comps)&&d.comps.length){const cs=d.comps.slice(0,8).map(c=>({lo:+c.lo,mid:+c.mid,hi:+c.hi,w:clamp(+c.w||50,1,100)})).filter(c=>c.lo<c.mid&&c.mid<c.hi&&c.lo>NOW);if(cs.length){S.comps=cs;S.distTouched=true;$('modal').hidden=true;setMode('dist');return true}}
-  if(Array.isArray(d.points)){const ps=d.points.slice(0,12).map(q=>({p:+q.p,year:+q.year})).filter(q=>q.p>0&&q.p<100&&q.year>NOW+.05);if(ps.length>=2){S.points=ps;$('modal').hidden=true;setMode('points');return true}}
+  if(d.mode==='dist'&&Array.isArray(d.comps)&&d.comps.length){const cs=d.comps.slice(0,8).map(c=>({lo:+c.lo,mid:+c.mid,hi:+c.hi,w:clamp(+c.w||50,1,100)})).filter(c=>c.lo<c.mid&&c.mid<c.hi&&c.lo>NOW);if(cs.length){S.comps=cs;S.distTouched=true;setMode('dist');return true}}
+  if(Array.isArray(d.points)){const ps=d.points.slice(0,12).map(q=>({p:+q.p,year:+q.year})).filter(q=>q.p>0&&q.p<100&&q.year>NOW+.05);if(ps.length>=2){S.points=ps;setMode('points');return true}}
   return false}
 
 /* ---------- submit ---------- */
@@ -706,12 +737,13 @@ function buildBar(q,cw){
   inp.addEventListener('input',()=>{put(inp.value===''?null:+inp.value);persistC()});inp.addEventListener('blur',paint);
   paint();return w}
 function chinaTable(host){const cw=crowd(),t=el('table'),hr=el('tr'),tb=el('tbody');host.textContent='';
-  [['#','num'],['Question (select to open)',''],['My forecast','num'],['Median forecast','num'],['Forecasters','num']].forEach(([k,c])=>hr.appendChild(el('th',c,k)));
+  [['#','num'],['Question',''],['My forecast','num'],['Median forecast','num'],['Forecasters','num']].forEach(([k,c])=>hr.appendChild(el('th',c,k)));
   Q.forEach((q,i)=>{const tr=el('tr'),nm=el('td','nm'),b=el('button','btn link',q.title);b.type='button';b.addEventListener('click',()=>{C.step=i+1;persistC();location.hash==='#china'?renderC(1):location.hash='#china'});
     nm.appendChild(b);if(q.nowText)nm.appendChild(el('div','note','today: '+q.nowText));tr.append(el('td','num',String(i+1)),nm,el('td','num',fv(q,C.a[q.id])),el('td','num',fv(q,cw[q.id].med)),el('td','num',String(cw[q.id].n)));tb.appendChild(tr)});
   const th=el('thead');th.appendChild(hr);t.append(th,tb);host.appendChild(t)}
 function navC(){const n=Q.length,s=C.step,st=$('cSteps');st.textContent='';
-  ['Overview',...Q.map((q,i)=>(i+1)+(C.a[q.id]!=null?'✓':'')),'Summary'].forEach((t,i)=>{const b=el('button',null,t);b.type='button';b.dataset.v=i;b.setAttribute('aria-pressed',String(i===s));st.appendChild(b)});
+  ['Overview',...Q.map((q,i)=>String(i+1)),'Summary'].forEach((t,i)=>{const isQ=i>0&&i<=n,ans=isQ&&C.a[Q[i-1].id]!=null,b=el('button',isQ?'q'+(ans?' ans':''):null,t);
+    b.type='button';b.dataset.v=i;if(i===s)b.setAttribute('aria-current','step');if(isQ)b.setAttribute('aria-label','Question '+i+(ans?', answered':''));st.appendChild(b)});
   $('cPrev').hidden=s===0;$('cNext').hidden=s===n+1;$('cNext').textContent=s===0?'Start →':C.a[Q[s-1]?.id]==null?'Skip →':s===n?'Summary →':'Next →'}
 function renderC(dir){const n=Q.length,s=C.step,card=$('cCard'),cw=crowd();card.textContent='';navC();$('cSubmit').hidden=s!==n+1;
   if(dir){card.className='card';void card.offsetWidth;card.className='card '+(dir>0?'inR':'inL')}
@@ -719,13 +751,13 @@ function renderC(dir){const n=Q.length,s=C.step,card=$('cCard'),cw=crowd();card.
     card.append(el('p',null,Q.length+' short questions about China and AI. Each one asks for one number: a probability, or for the first question a percentage.'),
       el('p',null,'All questions are optional. Your answers are saved in this browser as you go. On the last page you can submit them under your name and compare them with the median forecast.'),
       el('p','note','To move between questions, use Previous and Next, the left and right arrow keys, or a swipe.'));
-    const ol=el('ol');Q.forEach((q,i)=>{const li=el('li'),b=el('button','btn link',q.title);b.type='button';b.addEventListener('click',()=>go(i+1));li.appendChild(b);ol.appendChild(li)});card.appendChild(ol);
+    const ol=el('ol','qlist');Q.forEach((q,i)=>{const li=el('li'),b=el('button','btn link',q.title);b.type='button';b.addEventListener('click',()=>go(i+1));li.appendChild(b);ol.appendChild(li)});card.appendChild(ol);
   }else if(s<=n){const q=Q[s-1];
     const pn=el('div','panel'),d=el('details','panel'),pb=el('div','pbody');
     pn.appendChild(el('h3','ph','Make a prediction'));if(q.nowText)pn.appendChild(el('p',null,'Today: '+q.nowText));pn.appendChild(buildBar(q,cw));
     d.open=true;d.appendChild(el('summary',null,'Resolution criteria (draft)'));pb.append(el('p',null,q.res),el('p','sub','Fine print'),el('p',null,q.bg));d.appendChild(pb);
-    card.append(el('h2',null,'Question '+s+': '+q.title),pn,d);
-  }else{card.appendChild(el('h2',null,'Summary'));const w=el('div','tblw');chinaTable(w);card.appendChild(w)}
+    card.append(el('p','kick','Question '+s+' of '+n),el('h2','qt',q.title),pn,d);
+  }else{const p=el('div','panel'),w=el('div','tblw');chinaTable(w);p.appendChild(w);card.append(el('h2','qt','Your answers'),p)}
   updateSubmitC()}
 function go(d){const s=clamp(C.step+d,0,Q.length+1);if(s===C.step)return;C.step=s;persistC();renderC(d);window.scrollTo(0,0)}
 $('cPrev').addEventListener('click',()=>go(-1));$('cNext').addEventListener('click',()=>go(1));
@@ -760,35 +792,53 @@ async function bootC(){
   if(apiSet)try{const j=await (await fetch(API+'?tab=answers')).json();C.ok=!!(j.ok&&j.tab==='answers'&&Array.isArray(j.rows));if(C.ok)C.rows=j.rows}catch(e){}
   C.loaded=true;if(!$('viewC').hidden){const a=document.activeElement;if(!(a instanceof Element&&a.closest('#cCard')))renderC();else updateSubmitC()}else if(!$('viewR').hidden)renderResults()}
 
+/* ---------- submit dock ---------- */
+// While step 2 is off screen (and the walkthrough is not running), a small bar at the bottom of the screen
+// shows the state of step 1 and scrolls to the form. So Submit is always one select away.
+let st2Seen=true;
+function dock(){const show=!st2Seen&&!$('viewF').hidden&&$('coach').hidden,ok=!!(lastModel&&lastModel.ok);
+  $('dock').hidden=!show;document.body.classList.toggle('docked',show);if(!show)return;
+  const md=ok?quantileOf(lastModel.cdf,.5):0;
+  $('dockT').textContent=!ok?'Step 1: enter two points.':S.saved?'Saved. Your median year: '+(md>=2300?'after 2300':Math.floor(md+1e-6)):'Your median year: '+(md>=2300?'after 2300':Math.floor(md+1e-6));
+  $('dockBtn').textContent=S.saved?'Update ↓':'Submit ↓'}
+if('IntersectionObserver' in window)new IntersectionObserver(es=>{st2Seen=es[es.length-1].isIntersecting;dock()}).observe($('st2'));
+$('dockBtn').addEventListener('click',()=>{$('st2').scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'});$('fName').focus({preventScroll:true})});
+
 /* ---------- walkthrough ---------- */
-// Runs one time for a new user, after the choice of input mode. The small button next to the question runs it again.
+// Runs one time for a new user. The small button next to the question runs it again.
+// Each step outlines one part of the page. The text is in a bar at the bottom of the screen, so nothing on the page moves.
 const TOUR=[
-  ['st1',()=>'Start here. '+(S.mode==='dist'?'Drag the handles under the chart to set the quartiles of your forecast.':'In each row, type the year before which you give TAI that chance. You can change the percentages and add rows.')+' Select "change" for a different type of input.'],
-  ['eChart',()=>'This is your curve. It changes as you '+(S.mode==='dist'?'move the handles.':'type. You can also drag the points on it.')],
-  ['st2',()=>'Add your name, then select "Submit forecast". You can submit again later: the latest forecast under your name counts.'],
-  ['st3',()=>'After you submit, compare your curve with the pooled forecast of all forecasters.'],
+  [()=>S.mode==='dist'?'sliders':'pointsPanel',()=>'Start here. '+(S.mode==='dist'?'Drag the handles under the chart: the circles are the 25% and 75% quartiles, the square is the median.':'In each row, type the year before which you give TAI that chance. You can change the percentages and add rows.')+' "Distribution" gives you sliders instead.'],
+  [()=>'eChart',()=>'This is your curve. It changes as you '+(S.mode==='dist'?'move the handles.':'type, and you can drag the points on it.')],
+  [()=>'st2',()=>'Add your name and select "Submit forecast". You can submit again later: the latest forecast under your name counts.'],
+  [()=>'tabR',()=>'After you submit, open "Everyone\'s forecasts" to compare your curve with the pooled forecast.'],
 ];
-function tourOff(){document.querySelectorAll('.tour').forEach(e=>e.remove());document.querySelectorAll('.tourOn').forEach(e=>e.classList.remove('tourOn'))}
+function tourOff(){$('coach').hidden=true;document.body.classList.remove('coaching');document.querySelectorAll('.tourOn').forEach(e=>e.classList.remove('tourOn'));dock()}
 function tour(i){tourOff();
   if(i==null||i>=TOUR.length){try{localStorage.setItem('tai-tour','1')}catch(e){}return}
-  const [id,text]=TOUR[i],t=$(id),last=i===TOUR.length-1,b=el('div','tour'),nx=el('button','btn',last?'Done':'Next'),sk=el('button','btn link','Skip');
-  nx.type=sk.type='button';nx.addEventListener('click',()=>tour(i+1));sk.addEventListener('click',()=>tour(null));
-  b.append(el('b',null,'Step '+(i+1)+' of '+TOUR.length+'. '),text(),nx);if(!last)b.append(sk);
-  t.classList.add('tourOn');t.classList.contains('step')?t.prepend(b):t.before(b);if(i)b.scrollIntoView({block:'nearest'})}
-$('tourBtn').addEventListener('click',()=>{if(!$('modal').hidden)closeModal();tour(0)});
+  const [id,text]=TOUR[i],t=$(id()),last=i===TOUR.length-1,c=$('coachT');
+  c.textContent='';c.append(el('b',null,(i+1)+' of '+TOUR.length+' · '),text());
+  $('coachNext').textContent=last?'Done':'Next';$('coachNext').onclick=()=>tour(i+1);$('coachSkip').hidden=last;
+  $('coach').hidden=false;document.body.classList.add('coaching');t.classList.add('tourOn');dock();
+  t.scrollIntoView({block:'nearest',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'})}
+$('coachSkip').addEventListener('click',()=>tour(null));
+$('tourBtn').addEventListener('click',()=>tour(0));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('coach').hidden)tour(null)});
 
 /* ---------- routing + start ---------- */
 function route(){const v=location.hash==='#results'?'R':location.hash==='#china'?'C':'F';
   ['F','C','R'].forEach(k=>{$('view'+k).hidden=k!==v;k===v?$('tab'+k).setAttribute('aria-current','page'):$('tab'+k).removeAttribute('aria-current')});
-  $('pageH').textContent=v==='C'?'China and AI: what do you expect?':'When will transformative AI arrive?';$('pageSub').hidden=v==='C';if(v!=='C')$('def'+v).appendChild($('pageDef'));$('tourBtn').hidden=v!=='F';if(v!=='F')tourOff();
+  $('pageKick').textContent=v==='C'?'China and AI':'TAI timelines';$('pageH').textContent=v==='C'?'What do you expect?':'When will transformative AI arrive?';
+  $('pageSub').hidden=v==='C';$('hero').hidden=v!=='R';$('tourBtn').hidden=v!=='F';if(v!=='C')$('def'+v).appendChild($('pageDef'));if(v!=='F')tourOff();dock();
   v==='R'?renderResults():v==='C'?renderC():renderEditor()}
 window.addEventListener('hashchange',route);
 // The questionnaire lays itself out in percent, so it does not need a redraw on resize (a redraw would also drop the focus when a phone keyboard opens).
 let rz;window.addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{if($('viewC').hidden)route()},80)});
-function start(data){if(data&&data.S)Object.assign(S,data.S);
-  if(S.mode)setMode(S.mode);else{S.mode=null;setMode('points');S.mode='points';if(location.hash!=='#results'&&location.hash!=='#china')openModal()}
-  route();boot();bootC()}
-start({});
+function start(){setMode(S.mode||'points');route();boot();bootC();
+  // A new user gets the walkthrough, and the cursor goes to the first empty year.
+  let seen=true;try{seen=!!localStorage.getItem('tai-tour')}catch(e){}
+  if(!seen&&!$('viewF').hidden){const y=[...document.querySelectorAll('#pointRows .y')].find(i=>!i.value);if(S.mode==='points'&&y)y.focus({preventScroll:true});tour(0)}}
+start();
 </script>
 </body>
 </html>
